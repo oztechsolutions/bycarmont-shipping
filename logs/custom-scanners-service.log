@@ -1,0 +1,182 @@
+2026-09-13T11:08:54.756+09:30  INFO 385775 --- [main] c.h.a.c.CustomScannersServiceApplication : Starting CustomScannersServiceApplication v1.1.13 using Java 17.0.20 with PID 385775 (/home/satish/.vscode/extensions/hcltechnologies.hclappscancodesweep-1.5.2/lib/custom-scanners-service-1.1.13.jar started by satish in /home/satish/Public/bucklit/BYCARMOUNT/byc-shipping)
+2026-09-13T11:08:54.769+09:30  INFO 385775 --- [main] c.h.a.c.CustomScannersServiceApplication : No active profile set, falling back to 1 default profile: "default"
+2026-09-13T11:09:00.837+09:30  INFO 385775 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 9221 (http)
+2026-09-13T11:09:00.904+09:30  INFO 385775 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-13T11:09:00.907+09:30  INFO 385775 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.54]
+2026-09-13T11:09:01.081+09:30  INFO 385775 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-09-13T11:09:01.084+09:30  INFO 385775 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 4856 ms
+2026-09-13T11:09:01.493+09:30 DEBUG 385775 --- [main] o.s.b.w.s.ServletContextInitializerBeans : Mapping filters: webMvcObservationFilter urls=[/*] order=-2147483647, resourceUrlEncodingFilter urls=[/*] order=2147483647, characterEncodingFilter urls=[/*] order=-2147483648, formContentFilter urls=[/*] order=-9900, requestContextFilter urls=[/*] order=-105
+2026-09-13T11:09:01.494+09:30 DEBUG 385775 --- [main] o.s.b.w.s.ServletContextInitializerBeans : Mapping servlets: dispatcherServlet urls=[/]
+2026-09-13T11:09:01.562+09:30 DEBUG 385775 --- [main] o.s.w.f.ServerHttpObservationFilter      : Filter 'webMvcObservationFilter' configured for use
+2026-09-13T11:09:01.563+09:30 DEBUG 385775 --- [main] o.s.w.s.r.ResourceUrlEncodingFilter      : Filter 'resourceUrlEncodingFilter' configured for use
+2026-09-13T11:09:04.045+09:30 DEBUG 385775 --- [main] s.w.s.m.m.a.RequestMappingHandlerMapping : 23 mappings in 'requestMappingHandlerMapping'
+2026-09-13T11:09:04.201+09:30 DEBUG 385775 --- [main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**, /swagger-ui/**, /swagger-ui/*swagger-initializer.js, /webjars/*swagger-ui/**, /webjars/*swagger-ui/*swagger-initializer.js, /webjars/*swagger-ui/5.32.2/*swagger-initializer.js] in 'resourceHandlerMapping'
+2026-09-13T11:09:04.281+09:30 DEBUG 385775 --- [main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-09-13T11:09:04.494+09:30 DEBUG 385775 --- [main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-09-13T11:09:05.218+09:30  INFO 385775 --- [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-09-13T11:09:05.506+09:30  INFO 385775 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 9221 (http) with context path '/'
+2026-09-13T11:09:05.595+09:30  INFO 385775 --- [main] c.h.a.c.CustomScannersServiceApplication : Started CustomScannersServiceApplication in 14.48 seconds (process running for 16.796)
+2026-09-13T11:09:05.780+09:30  WARN 385775 --- [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+2026-09-13T11:09:05.785+09:30  WARN 385775 --- [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'
+2026-09-13T11:09:05.903+09:30  INFO 385775 --- [http-nio-9221-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-13T11:09:05.904+09:30  INFO 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-13T11:09:05.905+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected StandardServletMultipartResolver
+2026-09-13T11:09:05.905+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected CookieLocaleResolver
+2026-09-13T11:09:05.907+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected CookieThemeResolver
+2026-09-13T11:09:05.909+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@3aa7473
+2026-09-13T11:09:05.910+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.support.SessionFlashMapManager@16dafba1
+2026-09-13T11:09:05.911+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-09-13T11:09:05.912+09:30  INFO 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 8 ms
+2026-09-13T11:09:05.977+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : GET "/v1/scanRules", parameters={}
+2026-09-13T11:09:05.992+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#getScanRules(String[])
+2026-09-13T11:09:05.999+09:30  INFO 385775 --- [Thread-0] c.h.a.s.s.services.ArticleResource       : Completed reading English articles
+2026-09-13T11:09:06.050+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T11:09:06.073+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{Golang={com.ouncelabs.languagelite.golang.rules.CommMisconfig=CustomScannersServiceScanRule{ruleNam (truncated)...]
+2026-09-13T11:09:06.360+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T12:01:09.868+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T12:01:10.003+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T12:01:10.064+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleException(Exception)
+2026-09-13T12:01:10.111+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T12:01:10.124+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@20f5651 (truncated)...]
+2026-09-13T12:01:10.127+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [jakarta.servlet.ServletException: Handler dispatch failed: java.lang.NoClassDefFoundError: org/tomlj/Toml]
+2026-09-13T12:01:10.139+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
+2026-09-13T12:01:10.218+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T12:01:10.224+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T12:01:10.252+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T12:01:10.256+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T12:01:10.260+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@59fbdd4 (truncated)...]
+2026-09-13T12:01:10.263+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: md]
+2026-09-13T12:01:10.266+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-13T12:01:10.311+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T12:01:10.343+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T12:01:10.617+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T12:01:10.636+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T12:01:10.641+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T12:03:12.320+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T12:03:12.328+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T12:03:12.334+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T12:03:12.336+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T12:03:12.337+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@2418249 (truncated)...]
+2026-09-13T12:03:12.338+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: md]
+2026-09-13T12:03:12.339+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-13T19:26:03.713+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:26:03.718+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:26:03.722+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T19:26:03.726+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T19:26:03.728+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@523428e]
+2026-09-13T19:26:03.733+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: md]
+2026-09-13T19:26:03.737+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-13T19:26:03.769+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:26:03.771+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:26:03.944+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:26:03.947+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:26:03.951+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:26:26.336+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:26:26.339+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:26:26.487+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:26:26.488+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:26:26.490+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:32:10.571+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:32:10.573+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:32:10.596+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:32:10.597+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:32:10.601+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:32:23.816+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:32:23.824+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:32:23.957+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:32:23.959+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:32:23.961+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:32:23.975+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:32:23.978+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:32:23.982+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T19:32:23.984+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T19:32:23.985+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@219747e (truncated)...]
+2026-09-13T19:32:23.988+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: prisma]
+2026-09-13T19:32:23.988+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-13T19:32:24.006+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:32:24.010+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:32:24.280+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:32:24.282+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:32:24.284+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:32:24.295+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:32:24.300+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:32:24.307+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:32:24.309+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:32:24.310+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:32:54.795+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:32:54.804+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:32:55.177+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:32:55.178+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:32:55.182+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:33:04.984+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:33:04.993+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:33:05.239+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:33:05.240+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:33:05.242+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:33:41.827+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:33:41.835+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:33:41.845+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T19:33:41.845+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T19:33:41.846+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@11cd6f2]
+2026-09-13T19:33:41.853+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: md]
+2026-09-13T19:33:41.854+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-13T19:34:33.439+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:34:33.444+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:34:33.800+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:34:33.801+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:34:33.803+09:30 DEBUG 385775 --- [http-nio-9221-exec-7] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:41:04.969+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:41:04.981+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:41:05.090+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:41:05.093+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:41:05.095+09:30 DEBUG 385775 --- [http-nio-9221-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:41:31.940+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:41:31.946+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:41:32.037+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:41:32.038+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:41:32.039+09:30 DEBUG 385775 --- [http-nio-9221-exec-9] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:42:45.679+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:42:45.682+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:42:45.733+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:42:45.734+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:42:45.735+09:30 DEBUG 385775 --- [http-nio-9221-exec-10] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:43:52.890+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:43:52.894+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:43:52.992+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-13T19:43:52.993+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-13T19:43:52.994+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-13T19:58:14.711+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:58:14.716+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:58:14.723+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleException(Exception)
+2026-09-13T19:58:14.725+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T19:58:14.727+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@4fd690f (truncated)...]
+2026-09-13T19:58:14.729+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [jakarta.servlet.ServletException: Handler dispatch failed: java.lang.NoClassDefFoundError: org/tomlj/Toml]
+2026-09-13T19:58:14.731+09:30 DEBUG 385775 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
+2026-09-13T19:59:00.423+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T19:59:00.426+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T19:59:00.431+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleException(Exception)
+2026-09-13T19:59:00.432+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T19:59:00.434+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@36ee38d (truncated)...]
+2026-09-13T19:59:00.440+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [jakarta.servlet.ServletException: Handler dispatch failed: java.lang.NoClassDefFoundError: org/tomlj/Toml]
+2026-09-13T19:59:00.444+09:30 DEBUG 385775 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 500 INTERNAL_SERVER_ERROR
+2026-09-13T20:02:37.220+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T20:02:37.223+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T20:02:37.238+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T20:02:37.239+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T20:02:37.239+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@32eb0eb (truncated)...]
+2026-09-13T20:02:37.241+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: env]
+2026-09-13T20:02:37.241+09:30 DEBUG 385775 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-13T20:02:54.333+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T20:02:54.340+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T20:02:54.358+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T20:02:54.359+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T20:02:54.361+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@2027a4c (truncated)...]
+2026-09-13T20:02:54.365+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: env]
+2026-09-13T20:02:54.366+09:30 DEBUG 385775 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-13T20:03:03.363+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-13T20:03:03.369+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-13T20:03:03.371+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-13T20:03:03.373+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-13T20:03:03.373+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@441e48b (truncated)...]
+2026-09-13T20:03:03.374+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: env]
+2026-09-13T20:03:03.375+09:30 DEBUG 385775 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
