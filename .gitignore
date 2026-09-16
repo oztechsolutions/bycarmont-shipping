@@ -15,7 +15,8 @@ database.sqlite
 
 .env
 .env.*
-
+/logs
+*.log
 
 
 

@@ -2,7 +2,7 @@
 
 client_id = "b1535f50b1f46743ed77242976f2878d"
 name = "BYCShipping"
-application_url = "https://bycarmont-shipping.onrender.com/"
+application_url = "https://example.com"
 embedded = true
 
 [build]
@@ -12,19 +12,19 @@ automatically_update_urls_on_dev = true
 api_version = "2026-10"
 
   [[webhooks.subscriptions]]
-  uri = "/webhooks/app/uninstalled"
-  topics = [ "app/uninstalled" ]
-
-  [[webhooks.subscriptions]]
   uri = "/webhooks/app/scopes_update"
   topics = [ "app/scopes_update" ]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = [ "app/uninstalled" ]
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_metaobject_definitions,write_metaobjects,write_products,write_shipping"
 
 [auth]
-redirect_urls = [ "https://bycarmont-shipping.onrender.com/api/auth" ]
+redirect_urls = [ "https://example.com/api/auth" ]
 
 [product.metafields.app.demo_info]
 type = "single_line_text_field"

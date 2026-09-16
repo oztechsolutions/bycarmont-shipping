@@ -33,8 +33,86 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
+
+// Tracks, per shop, whether Carrier Calculated Shipping is enabled on their
+// plan. Shopify rejects carrier-service registration with a specific error
+// when CCS isn't enabled — we persist that so the app can show the merchant
+// a clear message instead of silently retrying the same failing mutation.
 model ShippingRegistration {
-  shop       String  @id
+  id String @id @default(cuid())
+
+  shop        String  @unique
   ccsRequired Boolean @default(false)
-  message    String?
+  message     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// Add this model to your schema.prisma, then run:
+//   npx prisma migrate dev --name add_shipping_rate_logs
+//
+// NOTE: `@db.Text` is for Postgres/MySQL (unlimited-length text columns).
+// If you're on SQLite (common in Shopify app dev), remove every `@db.Text`
+// annotation below — SQLite's `String` column has no length limit anyway.
+
+model ShippingRateLog {
+  id String @id @default(cuid())
+
+  // ---- Request context -----------------------------------------------
+  shop          String?
+  requestId     String? @unique // Shopify's request id, if provided in headers
+  checkoutToken String?
+
+  // ---- Parsed request summary (fast to query without touching JSON) --
+  currency         String?
+  totalWeightGrams Int?
+  totalWeightKg    Float?
+  itemCount        Int?
+
+  destinationCountry  String?
+  destinationState    String?
+  destinationCity     String?
+  destinationPostcode String?
+
+  // ---- Raw payloads, for full replay when something looks wrong ------
+  requestJson String?  // the full Shopify rate request body
+  itemsJson   String?  // just the cart items array
+
+  // ---- Which pricing source handled this request ----------------------
+  // e.g. "fast-courier", "smart-send", or any future provider — no schema
+  // change needed to add one.
+  provider String?
+
+  // ---- Generic provider call details ------------------------------------
+  // Works the same regardless of which shipping provider was called.
+  providerRequestJson  String?  // what we sent the provider
+  providerResponseJson String?  // what the provider sent back, verbatim
+  providerHttpStatus   Int?
+
+  // Total valid quotes the provider returned, and a breakdown by courier/
+  // service name so you can see e.g. {"Aramex": 4, "Couriers Please": 2}
+  // without needing a column per courier.
+  totalQuoteCount    Int?
+  quoteBreakdownJson String? 
+
+  // ---- Result -----------------------------------------------------------
+  returnedRatesJson String?  // the final rates array sent back to Shopify
+  returnedRateCount Int?
+
+  // ---- Outcome ------------------------------------------------------------
+  status       String // "success" | "empty" | "error"
+  errorMessage String? 
+
+  durationMs Int? // total time spent handling the request
+
+  createdAt DateTime @default(now())
+
+  @@index([shop])
+  @@index([createdAt])
+  @@index([status])
+  @@index([provider])
+  @@index([requestId])
 }

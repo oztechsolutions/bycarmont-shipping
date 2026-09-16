@@ -26,6 +26,7 @@ shopify app init --template=https://github.com/Shopify/shopify-app-template-reac
 
 ```shell
 shopify app dev
+shopify app dev --store YOUR-NEW-STORE.myshopify.com
 ```
 
 Press P to open the URL to your app. Once you click install, you can start development.
@@ -111,8 +112,36 @@ To test the rate:
 5. In Shopify admin, confirm the carrier service is active and add its calculated rate to the shipping zone if Shopify has not already done so.
 6. Add a shippable product to the cart, proceed to checkout, and enter a delivery address. The checkout rate should be `Test Shipping` at `10.00` in the store or presentment currency.
 
-The callback returns `1000` subunits, which Shopify renders as `10.00`; it does
-not hard-code a currency symbol.
+The callback calculates total shipment weight from Shopify's `grams` and
+`quantity` fields. Shipments under `30 kg` use the `Fast delivery` handler;
+shipments at or above `30 kg` use the `Smart Send shipping` handler. Both
+handlers currently return the configured test rates. Replace the handler
+bodies with the future Fast Delivery and Smart Send API calls when those
+integrations are ready.
+
+The weight log is server-side. Watch the terminal running `npm run dev`; it
+will show each item's grams and quantity plus the calculated total grams and
+kilograms. It will not appear in the browser console because Shopify calls the
+CarrierService callback on the app server.
+
+Fast Courier configuration is server-side only. Set these environment
+variables before starting the app:
+
+```shell
+FAST_COURIER_SECRET_KEY=your-secret-key
+FAST_COURIER_PICKUP_SUBURB=SYDNEY
+FAST_COURIER_PICKUP_STATE=NSW
+FAST_COURIER_PICKUP_POSTCODE=2000
+FAST_COURIER_DEFAULT_LENGTH_CM=30
+FAST_COURIER_DEFAULT_WIDTH_CM=20
+FAST_COURIER_DEFAULT_HEIGHT_CM=15
+```
+
+The Fast Courier secret must not be committed or exposed to browser code. The
+callback maps Shopify destination data to the courier request, converts grams
+to kilograms, and uses the first quote returned by the courier API. If the
+courier request fails or returns no price, Shopify receives no rate for the
+Fast Delivery branch.
 
 ### Application Storage
 

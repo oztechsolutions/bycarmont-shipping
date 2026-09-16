@@ -71,8 +71,7 @@ export default function Index() {
       ) : registration ? (
         <s-banner tone="success" heading="Carrier registered">
           <s-paragraph>
-            CCS is active and returns a fixed shipping rate of $10.00
-            in the checkout currency.
+            CCS is active.
           </s-paragraph>
         </s-banner>
       ) : (
