@@ -115,13 +115,13 @@ type RateLogEntry = {
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
 
-const FAST_DELIVERY_WEIGHT_LIMIT_GRAMS = 30_000;
-const FAST_COURIER_QUOTES_URL = "https://enterprise-api.fastcourier.com.au/api/quotes";
+const FAST_DELIVERY_WEIGHT_LIMIT_GRAMS = envNumber("FAST_DELIVERY_WEIGHT_LIMIT_GRAMS", 30_000);
+const FAST_COURIER_QUOTES_URL = process.env.FAST_COURIER_QUOTES_URL || "https://enterprise-api.fastcourier.com.au/api/quotes";
 
 // How many quotes we try to hand back to Shopify in total, and how many of
 // those we prefer from each of the couriers below.
-const TARGET_TOTAL_QUOTES = 4;
-const PER_COURIER_TARGET = 2;
+const TARGET_TOTAL_QUOTES = envNumber("TARGET_TOTAL_QUOTES", 4);
+const PER_COURIER_TARGET = envNumber("PER_COURIER_TARGET", 2);
 
 // Match against courierName.toLowerCase() with .includes(), so "Aramex" and
 // "Couriers Please" both match regardless of the exact service name Fast
