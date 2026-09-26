@@ -53,3 +53,82 @@
 2026-09-21T09:38:17.131+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
 2026-09-21T09:38:17.131+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
 2026-09-21T09:38:17.132+09:30 DEBUG 385775 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-22T12:44:23.423+09:30  INFO 944346 --- [main] c.h.a.c.CustomScannersServiceApplication : Starting CustomScannersServiceApplication v1.1.13 using Java 17.0.20 with PID 944346 (/home/satish/.vscode/extensions/hcltechnologies.hclappscancodesweep-1.5.2/lib/custom-scanners-service-1.1.13.jar started by satish in /home/satish/Public/bucklit/BYCARMOUNT/byc-shipping)
+2026-09-22T12:44:23.600+09:30  INFO 944346 --- [main] c.h.a.c.CustomScannersServiceApplication : No active profile set, falling back to 1 default profile: "default"
+2026-09-22T12:44:42.767+09:30  INFO 944346 --- [Thread-0] c.h.a.s.s.services.ArticleResource       : Completed reading English articles
+2026-09-22T12:45:01.488+09:30  INFO 944346 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 9221 (http)
+2026-09-22T12:45:01.612+09:30  INFO 944346 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-22T12:45:01.613+09:30  INFO 944346 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.54]
+2026-09-22T12:45:03.693+09:30  INFO 944346 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-09-22T12:45:03.694+09:30  INFO 944346 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 35865 ms
+2026-09-22T12:45:05.530+09:30 DEBUG 944346 --- [main] o.s.b.w.s.ServletContextInitializerBeans : Mapping filters: webMvcObservationFilter urls=[/*] order=-2147483647, resourceUrlEncodingFilter urls=[/*] order=2147483647, characterEncodingFilter urls=[/*] order=-2147483648, formContentFilter urls=[/*] order=-9900, requestContextFilter urls=[/*] order=-105
+2026-09-22T12:45:05.641+09:30 DEBUG 944346 --- [main] o.s.b.w.s.ServletContextInitializerBeans : Mapping servlets: dispatcherServlet urls=[/]
+2026-09-22T12:45:06.835+09:30 DEBUG 944346 --- [main] o.s.w.f.ServerHttpObservationFilter      : Filter 'webMvcObservationFilter' configured for use
+2026-09-22T12:45:06.838+09:30 DEBUG 944346 --- [main] o.s.w.s.r.ResourceUrlEncodingFilter      : Filter 'resourceUrlEncodingFilter' configured for use
+2026-09-22T12:45:10.578+09:30 DEBUG 944346 --- [main] s.w.s.m.m.a.RequestMappingHandlerMapping : 23 mappings in 'requestMappingHandlerMapping'
+2026-09-22T12:45:10.735+09:30 DEBUG 944346 --- [main] o.s.w.s.handler.SimpleUrlHandlerMapping  : Patterns [/webjars/**, /**, /swagger-ui/**, /swagger-ui/*swagger-initializer.js, /webjars/*swagger-ui/**, /webjars/*swagger-ui/*swagger-initializer.js, /webjars/*swagger-ui/5.32.2/*swagger-initializer.js] in 'resourceHandlerMapping'
+2026-09-22T12:45:10.839+09:30 DEBUG 944346 --- [main] s.w.s.m.m.a.RequestMappingHandlerAdapter : ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2026-09-22T12:45:11.000+09:30 DEBUG 944346 --- [main] .m.m.a.ExceptionHandlerExceptionResolver : ControllerAdvice beans: 2 @ExceptionHandler, 1 ResponseBodyAdvice
+2026-09-22T12:45:11.538+09:30  INFO 944346 --- [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-09-22T12:45:11.782+09:30  INFO 944346 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 9221 (http) with context path '/'
+2026-09-22T12:45:11.877+09:30  INFO 944346 --- [main] c.h.a.c.CustomScannersServiceApplication : Started CustomScannersServiceApplication in 52.779 seconds (process running for 58.14)
+2026-09-22T12:45:12.053+09:30  WARN 944346 --- [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+2026-09-22T12:45:12.062+09:30  WARN 944346 --- [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'
+2026-09-22T12:45:12.144+09:30  INFO 944346 --- [http-nio-9221-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-22T12:45:12.145+09:30  INFO 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-22T12:45:12.147+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected StandardServletMultipartResolver
+2026-09-22T12:45:12.148+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected CookieLocaleResolver
+2026-09-22T12:45:12.149+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected CookieThemeResolver
+2026-09-22T12:45:12.152+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@e298654
+2026-09-22T12:45:12.154+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Detected org.springframework.web.servlet.support.SessionFlashMapManager@7091c868
+2026-09-22T12:45:12.156+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : enableLoggingRequestDetails='false': request parameters and headers will be masked to prevent unsafe logging of potentially sensitive data
+2026-09-22T12:45:12.157+09:30  INFO 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 9 ms
+2026-09-22T12:45:12.217+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : GET "/v1/scanRules", parameters={}
+2026-09-22T12:45:12.234+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#getScanRules(String[])
+2026-09-22T12:45:12.298+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-22T12:45:12.333+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [{Golang={com.ouncelabs.languagelite.golang.rules.WeakCryptoGolang=CustomScannersServiceScanRule{rule (truncated)...]
+2026-09-22T12:45:12.732+09:30 DEBUG 944346 --- [http-nio-9221-exec-1] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-22T12:46:59.205+09:30 DEBUG 944346 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T12:46:59.237+09:30 DEBUG 944346 --- [http-nio-9221-exec-2] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T12:46:59.403+09:30 DEBUG 944346 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-22T12:46:59.407+09:30 DEBUG 944346 --- [http-nio-9221-exec-2] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-22T12:46:59.411+09:30 DEBUG 944346 --- [http-nio-9221-exec-2] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-22T12:47:28.730+09:30 DEBUG 944346 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T12:47:28.733+09:30 DEBUG 944346 --- [http-nio-9221-exec-3] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T12:47:28.866+09:30 DEBUG 944346 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-22T12:47:28.867+09:30 DEBUG 944346 --- [http-nio-9221-exec-3] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-22T12:47:28.869+09:30 DEBUG 944346 --- [http-nio-9221-exec-3] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-22T12:47:57.317+09:30 DEBUG 944346 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T12:47:57.320+09:30 DEBUG 944346 --- [http-nio-9221-exec-5] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T12:47:57.336+09:30 DEBUG 944346 --- [http-nio-9221-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-22T12:47:57.352+09:30 DEBUG 944346 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-22T12:47:57.359+09:30 DEBUG 944346 --- [http-nio-9221-exec-5] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@4e00ccc (truncated)...]
+2026-09-22T12:47:57.364+09:30 DEBUG 944346 --- [http-nio-9221-exec-5] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: env]
+2026-09-22T12:47:57.366+09:30 DEBUG 944346 --- [http-nio-9221-exec-5] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-22T12:58:18.747+09:30 DEBUG 944346 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T12:58:18.754+09:30 DEBUG 944346 --- [http-nio-9221-exec-4] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T12:58:18.798+09:30 DEBUG 944346 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-22T12:58:18.799+09:30 DEBUG 944346 --- [http-nio-9221-exec-4] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-22T12:58:18.800+09:30 DEBUG 944346 --- [http-nio-9221-exec-4] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-22T12:58:30.835+09:30 DEBUG 944346 --- [http-nio-9221-exec-8] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T12:58:30.838+09:30 DEBUG 944346 --- [http-nio-9221-exec-8] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T12:58:30.870+09:30 DEBUG 944346 --- [http-nio-9221-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-22T12:58:30.871+09:30 DEBUG 944346 --- [http-nio-9221-exec-8] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-22T12:58:30.872+09:30 DEBUG 944346 --- [http-nio-9221-exec-8] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-22T13:01:01.592+09:30 DEBUG 944346 --- [http-nio-9221-exec-7] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T13:01:01.596+09:30 DEBUG 944346 --- [http-nio-9221-exec-7] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T13:01:01.638+09:30 DEBUG 944346 --- [http-nio-9221-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-22T13:01:01.638+09:30 DEBUG 944346 --- [http-nio-9221-exec-7] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-22T13:01:01.640+09:30 DEBUG 944346 --- [http-nio-9221-exec-7] o.s.web.servlet.DispatcherServlet        : Completed 200 OK
+2026-09-22T13:02:18.175+09:30 DEBUG 944346 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T13:02:18.181+09:30 DEBUG 944346 --- [http-nio-9221-exec-6] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T13:02:18.188+09:30 DEBUG 944346 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Using @ExceptionHandler com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice#handleInvalidArgument(IllegalArgumentException)
+2026-09-22T13:02:18.189+09:30 DEBUG 944346 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json, application/yaml]
+2026-09-22T13:02:18.190+09:30 DEBUG 944346 --- [http-nio-9221-exec-6] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [com.hcl.appscan.customscannersservice.controller.CustomScannersControllerAdvice$ErrorMessage@6e83b56 (truncated)...]
+2026-09-22T13:02:18.193+09:30 DEBUG 944346 --- [http-nio-9221-exec-6] .m.m.a.ExceptionHandlerExceptionResolver : Resolved [java.lang.IllegalArgumentException: The following file type is not supported: env]
+2026-09-22T13:02:18.194+09:30 DEBUG 944346 --- [http-nio-9221-exec-6] o.s.web.servlet.DispatcherServlet        : Completed 422 UNPROCESSABLE_ENTITY
+2026-09-22T13:02:34.716+09:30 DEBUG 944346 --- [http-nio-9221-exec-9] o.s.web.servlet.DispatcherServlet        : POST "/v1/scanFile", parameters={multipart}
+2026-09-22T13:02:34.719+09:30 DEBUG 944346 --- [http-nio-9221-exec-9] s.w.s.m.m.a.RequestMappingHandlerMapping : Mapped to com.hcl.appscan.customscannersservice.controller.CustomScannersController#runScanFile(MultipartFile, String, int[])
+2026-09-22T13:02:34.744+09:30 DEBUG 944346 --- [http-nio-9221-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Using 'application/json', given [application/json, text/plain, */*] and supported [application/json]
+2026-09-22T13:02:34.745+09:30 DEBUG 944346 --- [http-nio-9221-exec-9] o.s.w.s.m.m.a.HttpEntityMethodProcessor  : Writing [CustomScannerServiceResult{findings=[]}]
+2026-09-22T13:02:34.746+09:30 DEBUG 944346 --- [http-nio-9221-exec-9] o.s.web.servlet.DispatcherServlet        : Completed 200 OK

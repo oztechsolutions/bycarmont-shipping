@@ -1,303 +1,219 @@
-# Shopify App Template - React Router
+# Shopify Shipping Rate Service
 
-This is a template for building a [Shopify app](https://shopify.dev/docs/apps/getting-started) using [React Router](https://reactrouter.com/). It was forked from the [Shopify Remix app template](https://github.com/Shopify/shopify-app-template-remix) and converted to React Router.
+A custom Shopify [carrier service](https://shopify.dev/docs/apps/build/shipping/carrier-services) endpoint that calculates live shipping rates at checkout by calling two courier providers (Fast Courier and Smart Send), with a built-in flat-rate fallback so checkout never breaks if a provider is unavailable.
 
-Rather than cloning this repo, follow the [Quick Start steps](https://github.com/Shopify/shopify-app-template-react-router#quick-start).
+## Overview
 
-Visit the [`shopify.dev` documentation](https://shopify.dev/docs/api/shopify-app-react-router) for more details on the React Router app package.
+Shopify calls this endpoint every time a customer reaches the shipping step at checkout, passing along the cart's weight, item list, and destination address. The endpoint:
 
-## Upgrading from Remix
+1. Picks a courier provider based on total order weight
+2. Requests live quotes from that provider
+3. Filters/ranks the quotes it gets back
+4. Falls back to a flat-rate price table if no live quotes are available
+5. Logs the full request/response for every call
+6. Returns a list of shipping options back to Shopify
 
-If you have an existing Remix app that you want to upgrade to React Router, please follow the [upgrade guide](https://github.com/Shopify/shopify-app-template-react-router/wiki/Upgrading-from-Remix). Otherwise, please follow the quick start guide below.
+See [Algorithm](#algorithm) and [Architecture](#architecture) below for details.
 
-## Quick start
+## Tech stack
 
-### Prerequisites
+| Layer | Technology |
+|---|---|
+| Framework | React Router (Remix-style route module: `loader` / `action`) |
+| Language | TypeScript |
+| Database / ORM | Prisma (`ShippingRateLog` model) |
+| Courier A — light parcels | [Fast Courier](https://fastcourier.com.au) REST API (JSON) |
+| Courier B — bulk/freight | [Smart Send](https://smartsend.com.au) SOAP 1.2 API (XML) |
+| Config | `dotenv` (`.env` file locally) |
 
-Before you begin, you'll need to [download and install the Shopify CLI](https://shopify.dev/docs/apps/tools/cli/getting-started) if you haven't already.
+> This route is one endpoint inside a larger Shopify app project — it assumes an existing `db.server.ts` that exports a configured Prisma client as its default export, and an existing `ShippingRateLog` model in the Prisma schema.
 
-### Setup
+## Environment variables
 
-```shell
-shopify app init --template=https://github.com/Shopify/shopify-app-template-react-router
-```
+### Required
 
-### Local Development
+| Variable | Description |
+|---|---|
+| `FAST_COURIER_SECRET_KEY` | API secret key for Fast Courier. Without this, the Fast Courier path fails and falls back to flat rates. |
+| `SMARTSEND_VIP_USERNAME` | Smart Send VIP account username. |
+| `SMARTSEND_VIP_PASSWORD` | Smart Send VIP account password. |
 
-```shell
-shopify app dev
-shopify app dev --store YOUR-NEW-STORE.myshopify.com
-```
+### Optional — behaviour tuning
 
-Press P to open the URL to your app. Once you click install, you can start development.
+| Variable | Default | Description |
+|---|---|---|
+| `FAST_DELIVERY_WEIGHT_LIMIT_GRAMS` | `30000` (30kg) | Orders under this weight use Fast Courier; at/above it, Smart Send is used instead. |
+| `TARGET_TOTAL_QUOTES` | `4` | Max number of Fast Courier quotes returned to the customer. |
+| `PER_COURIER_TARGET` | `2` | Max quotes taken from each preferred courier (Aramex, Couriers Please) before backfilling with any other courier. |
+| `SMARTSEND_TARGET_TOTAL_QUOTES` | value of `TARGET_TOTAL_QUOTES` | Max number of Smart Send quotes returned. |
 
-Local development is powered by [the Shopify CLI](https://shopify.dev/docs/apps/tools/cli). It logs into your account, connects to an app, provides environment variables, updates remote config, creates a tunnel and provides commands to generate extensions.
+### Optional — pickup address (used by both providers)
 
-### Authenticating and querying data
+| Variable | Default |
+|---|---|
+| `FAST_COURIER_PICKUP_SUBURB` | `BRONTE` |
+| `FAST_COURIER_PICKUP_STATE` | `NSW` |
+| `FAST_COURIER_PICKUP_POSTCODE` | `2024` |
+| `FAST_COURIER_PICKUP_BUILDING_TYPE` | `residential` |
+| `FAST_COURIER_DESTINATION_BUILDING_TYPE` | `residential` |
+| `SMARTSEND_COURIER_PICKUP_SUBURB` | `BRONTE` |
+| `SMARTSEND_COURIER_PICKUP_STATE` | `NSW` |
+| `SMARTSEND_COURIER_PICKUP_POSTCODE` | `2024` |
 
-To authenticate and query data you can use the `shopify` const that is exported from `/app/shopify.server.js`:
+### Optional — parcel dimensions (used when Shopify doesn't provide real package dimensions)
 
-```js
-export async function loader({ request }) {
-  const { admin } = await shopify.authenticate.admin(request);
+| Variable | Default | Used by |
+|---|---|---|
+| `FAST_COURIER_DEFAULT_TYPE` | `roll` | Fast Courier |
+| `FAST_COURIER_DEFAULT_LENGTH_CM` | `30` | Fast Courier |
+| `FAST_COURIER_DEFAULT_WIDTH_CM` | `20` | Fast Courier |
+| `FAST_COURIER_DEFAULT_HEIGHT_CM` | `15` | Fast Courier |
+| `SMARTSEND_COURIER_DEFAULT_TYPE` | `roll` | Smart Send |
+| `SMARTSEND_COURIER_DEFAULT_WIDTH_CM` | `20` | Smart Send (maps to `Depth`) |
+| `SMARTSEND_COURIER_DEFAULT_HEIGHT_CM` | `15` | Smart Send |
+| `SMARTSEND_COURIER_DEFAULT_LENGTH_CM` | `30` | Smart Send |
+| `SMARTSEND_COURIER_DEFAULT_QUANTITY` | `1` | Smart Send (fallback if a line item has no quantity) |
+| `SMARTSEND_TAILLIFT` | *(unused currently — reserved)* | Smart Send |
 
-  const response = await admin.graphql(`
-    {
-      products(first: 25) {
-        nodes {
-          title
-          description
-        }
-      }
-    }`);
+### Optional — provider URLs (override for testing/staging)
 
-  const {
-    data: {
-      products: { nodes },
-    },
-  } = await response.json();
+| Variable | Default |
+|---|---|
+| `FAST_COURIER_QUOTES_URL` | `https://enterprise-api.fastcourier.com.au/api/quotes` |
+| `SMARTSEND_COURIER_QUOTES_URL` | `https://developer.smartsend.com.au/service.asmx` |
 
-  return nodes;
-}
-```
+### Example `.env`
 
-This template comes pre-configured with examples of:
+```bash
+# Fast Courier
+FAST_COURIER_SECRET_KEY=your-fast-courier-secret
 
-1. Setting up your Shopify app in [/app/shopify.server.ts](https://github.com/Shopify/shopify-app-template-react-router/blob/main/app/shopify.server.ts)
-2. Querying data using Graphql. Please see: [/app/routes/app.\_index.tsx](https://github.com/Shopify/shopify-app-template-react-router/blob/main/app/routes/app._index.tsx).
-3. Responding to webhooks. Please see [/app/routes/webhooks.tsx](https://github.com/Shopify/shopify-app-template-react-router/blob/main/app/routes/webhooks.app.uninstalled.tsx).
-4. Using metafields, metaobjects, and declarative custom data definitions. Please see [/app/routes/app.\_index.tsx](https://github.com/Shopify/shopify-app-template-react-router/blob/main/app/routes/app._index.tsx) and [shopify.app.toml](https://github.com/Shopify/shopify-app-template-react-router/blob/main/shopify.app.toml).
+# Smart Send
+SMARTSEND_VIP_USERNAME=your-vip-username
+SMARTSEND_VIP_PASSWORD=your-vip-password
 
-Please read the [documentation for @shopify/shopify-app-react-router](https://shopify.dev/docs/api/shopify-app-react-router) to see what other API's are available.
+# Optional overrides
+FAST_DELIVERY_WEIGHT_LIMIT_GRAMS=30000
+TARGET_TOTAL_QUOTES=4
+PER_COURIER_TARGET=2
 
-## Shopify Dev MCP
-
-This template is configured with the Shopify Dev MCP. This instructs [Cursor](https://cursor.com/), [GitHub Copilot](https://github.com/features/copilot) and [Claude Code](https://claude.com/product/claude-code) and [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) to use the Shopify Dev MCP.
-
-For more information on the Shopify Dev MCP please read [the documentation](https://shopify.dev/docs/apps/build/devmcp).
-
-## Deployment
-
-### Test shipping rate
-
-This app exposes a CarrierService callback at `/api/shipping-rates`. It returns
-one fixed rate named `Test Shipping` at `10.00` in the checkout currency.
-
-Carrier services are not available on every Shopify plan. The store must be a
-development store, use Advanced Shopify or higher, or use Shopify with yearly
-billing or the calculated shipping feature enabled for a monthly fee. The app
-also requires the `write_shipping` scope.
-
-Carrier Calculated Shipping cannot be enabled by this app through the API. In
-Shopify Admin, open **Settings > Shipping and delivery**, open the applicable
-shipping profile, select **Manage rates**, and add a rate using **Use carrier
-or app to calculate rates**. If that option is unavailable, the store plan
-does not have Carrier Calculated Shipping enabled; upgrade the plan or contact
-Shopify Support to add the feature. After enabling it, reopen the app and use
-the **Retry registration** button shown in the app.
-
-Deploy the updated app configuration first, then start local development:
-
-```shell
-npm run deploy
-npm run dev
-```
-
-To test the rate:
-
-1. Run `npm run deploy`, then `npm run dev`, and open the development store from the CLI.
-2. Approve the updated `write_shipping` scope when Shopify prompts for reinstall. If it does not prompt, uninstall and reinstall the app.
-3. Reopen the app once after installation. The app registers `Test Shipping` automatically during authentication using `SHOPIFY_APP_URL`. If CCS was disabled, automatic retries stop and the app shows the reason.
-4. Enable CCS using the Admin steps above, then click **Retry registration** in the app.
-5. In Shopify admin, confirm the carrier service is active and add its calculated rate to the shipping zone if Shopify has not already done so.
-6. Add a shippable product to the cart, proceed to checkout, and enter a delivery address. The checkout rate should be `Test Shipping` at `10.00` in the store or presentment currency.
-
-The callback calculates total shipment weight from Shopify's `grams` and
-`quantity` fields. Shipments under `30 kg` use the `Fast delivery` handler;
-shipments at or above `30 kg` use the `Smart Send shipping` handler. Both
-handlers currently return the configured test rates. Replace the handler
-bodies with the future Fast Delivery and Smart Send API calls when those
-integrations are ready.
-
-The weight log is server-side. Watch the terminal running `npm run dev`; it
-will show each item's grams and quantity plus the calculated total grams and
-kilograms. It will not appear in the browser console because Shopify calls the
-CarrierService callback on the app server.
-
-Fast Courier configuration is server-side only. Set these environment
-variables before starting the app:
-
-```shell
-FAST_COURIER_SECRET_KEY=your-secret-key
-FAST_COURIER_PICKUP_SUBURB=SYDNEY
+# Pickup address
+FAST_COURIER_PICKUP_SUBURB=BRONTE
 FAST_COURIER_PICKUP_STATE=NSW
-FAST_COURIER_PICKUP_POSTCODE=2000
-FAST_COURIER_DEFAULT_LENGTH_CM=30
-FAST_COURIER_DEFAULT_WIDTH_CM=20
-FAST_COURIER_DEFAULT_HEIGHT_CM=15
+FAST_COURIER_PICKUP_POSTCODE=2024
 ```
 
-The Fast Courier secret must not be committed or exposed to browser code. The
-callback maps Shopify destination data to the courier request, converts grams
-to kilograms, and uses the first quote returned by the courier API. If the
-courier request fails or returns no price, Shopify receives no rate for the
-Fast Delivery branch.
+Set the same variables in your hosting provider's environment/secrets dashboard for staging and production (values will differ from local — production should use production API keys, not sandbox/test ones if the providers offer them).
 
-### Application Storage
+## How to run locally
 
-This template uses [Prisma](https://www.prisma.io/) to store session data, by default using an [SQLite](https://www.sqlite.org/index.html) database.
-The database is defined as a Prisma schema in `prisma/schema.prisma`.
+1. **Install dependencies** (from the project root):
+   ```bash
+   npm install
+   ```
+2. **Create a `.env` file** in the project root using the example above, filling in real Fast Courier and Smart Send credentials (ask the client/provider for sandbox credentials if available, to avoid hitting live pricing during testing).
+3. **Set up the database** (if not already done):
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev
+   ```
+4. **Start the dev server**:
 
-This use of SQLite works in production if your app runs as a single instance.
-The database that works best for you depends on the data your app needs and how it is queried.
-Here’s a short list of databases providers that provide a free tier to get started:
+   ### Local Development
 
-| Database   | Type             | Hosters                                                                                                                                                                                                                                    |
-| ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| MySQL      | SQL              | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-mysql), [Planet Scale](https://planetscale.com/), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/mysql) |
-| PostgreSQL | SQL              | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-postgresql), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/postgres)                                   |
-| Redis      | Key-value        | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-redis), [Amazon MemoryDB](https://aws.amazon.com/memorydb/)                                                                                                        |
-| MongoDB    | NoSQL / Document | [Digital Ocean](https://www.digitalocean.com/products/managed-databases-mongodb), [MongoDB Atlas](https://www.mongodb.com/atlas/database)                                                                                                  |
+    ```shell
+    shopify app dev
+    shopify app dev --store YOUR-NEW-STORE.myshopify.com
+    ```
 
-To use one of these, you can use a different [datasource provider](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#datasource) in your `schema.prisma` file, or a different [SessionStorage adapter package](https://github.com/Shopify/shopify-api-js/blob/main/packages/shopify-api/docs/guides/session-storage.md).
 
-### Build
+5. **Test the endpoint directly** with a sample Shopify-style payload:
+   ```bash
+   curl -X POST http://localhost:3000/path/to/this/route \
+     -H "Content-Type: application/json" \
+     -d '{
+       "rate": {
+         "currency": "AUD",
+         "destination": {
+           "city": "Melbourne",
+           "province": "VIC",
+           "postal_code": "3000",
+           "country": "AU"
+         },
+         "items": [
+           { "grams": 1200, "quantity": 1, "name": "Sample product" }
+         ]
+       }
+     }'
+   ```
+   A `GET` request to the same URL returns a `405` — this route is POST-only, matching what Shopify's carrier service calls with.
+6. **Point Shopify at it**: register the endpoint as a [carrier service](https://shopify.dev/docs/api/admin-rest/latest/resources/carrierservice) in the store's admin (or via the Admin API), using a publicly reachable URL (e.g. an ngrok tunnel while developing locally).
 
-Build the app by running the command below with the package manager of your choice:
+## Algorithm
 
-Using yarn:
+1. Shopify sends cart weight, item list, and destination address.
+2. Total order weight is calculated by summing `grams × quantity` across all items.
+3. **Weight decides the provider:**
+   - Under `FAST_DELIVERY_WEIGHT_LIMIT_GRAMS` (default 30kg) → **Fast Courier**
+   - At or above that limit → **Smart Send**
+4. The chosen provider is called with the shop's pickup address, the destination, and per-item weight/dimensions.
+5. **If quotes come back:**
+   - Fast Courier: up to 2 cheapest quotes each from Aramex and Couriers Please are preferred; if either courier is missing or short, the gap is backfilled with the next-cheapest quotes from any courier, up to 4 total.
+   - Smart Send: simply the cheapest quotes, up to the configured total.
+6. **If no quotes come back** (provider error, timeout, empty response, missing config, or an unhandled exception) — a flat-rate fallback table is used instead, banded by total weight (0–1kg, 1–5kg, 5–15kg, 15–20kg, 20–200kg, 200kg+ "confirm freight manually").
+7. Every call — request, raw provider response, chosen rates, and any error — is written to the `ShippingRateLog` table. A logging failure never blocks the response to Shopify.
+8. The final list of rates is returned as JSON in Shopify's expected `{ rates: [...] }` shape.
 
-```shell
-yarn build
+## Architecture
+
+```
+Shopify checkout
+      │  POST cart weight + destination
+      ▼
+action() [route entrypoint]
+      │
+      ├─ parse & validate request body
+      ├─ calculate total weight
+      │
+      ▼
+  weight < limit? ──yes──► getFastDeliveryRates()  ──► Fast Courier REST API (JSON)
+      │
+      no
+      │
+      ▼
+  getSmartSendShippingRate() ──► Smart Send SOAP API (XML)
+      │
+      ▼
+  quotes returned? ──no──► getManualFallbackRates()  (static, weight-banded)
+      │
+     yes
+      │
+      ▼
+  select/rank quotes (preferred couriers + cheapest, or cheapest-only for Smart Send)
+      │
+      ▼
+  saveRateLog()  ──► Prisma → ShippingRateLog table
+      │
+      ▼
+  Response.json({ rates: [...] })  ──► back to Shopify checkout
 ```
 
-Using npm:
+**Key design decisions:**
+- **Never 500.** Every failure path (bad request, provider timeout, invalid JSON, SOAP fault) is caught and degrades to either an empty rate list or the flat-rate fallback, rather than throwing — Shopify's own static fallback rate is worse for the customer than either of these.
+- **Provider-agnostic types.** Internal types (`ScoredQuote`, `RateLogEntry`) are written so a third courier could be added later without renaming fields across the codebase.
+- **Full audit trail.** Every rate request — successful or not — is logged with the raw provider request/response, so pricing disputes or "why did the customer see that price" questions can be answered from the database.
 
-```shell
-npm run build
-```
+## File reference
 
-Using pnpm:
+- `action()` — the route entrypoint Shopify's carrier service calls (POST only).
+- `loader()` — returns a `405` for any non-POST request (browsers, uptime checks, etc.), so the route doesn't crash.
+- `getFastDeliveryRates()` — Fast Courier integration (light parcels).
+- `getSmartSendShippingRate()` — Smart Send integration (bulk/freight, SOAP/XML).
+- `getManualFallbackRates()` — static flat-rate table, weight-banded.
+- `selectPreferredCouriersWithBackfill()` — Fast Courier quote ranking logic.
+- `selectCheapest()` — Smart Send quote ranking logic.
+- `saveRateLog()` — writes every request to `ShippingRateLog`, swallowing any DB errors.
 
-```shell
-pnpm run build
-```
 
-## Hosting
 
-When you're ready to set up your app in production, you can follow [our deployment documentation](https://shopify.dev/docs/apps/launch/deployment) to host it externally. From there, you have a few options:
-
-- [Google Cloud Run](https://shopify.dev/docs/apps/launch/deployment/deploy-to-google-cloud-run): This tutorial is written specifically for this example repo, and is compatible with the extended steps included in the subsequent [**Build your app**](tutorial) in the **Getting started** docs. It is the most detailed tutorial for taking a React Router-based Shopify app and deploying it to production. It includes configuring permissions and secrets, setting up a production database, and even hosting your apps behind a load balancer across multiple regions.
-- [Fly.io](https://fly.io/docs/js/shopify/): Leverages the Fly.io CLI to quickly launch Shopify apps to a single machine.
-- [Render](https://render.com/docs/deploy-shopify-app): This tutorial guides you through using Docker to deploy and install apps on a Dev store.
-- [Manual deployment guide](https://shopify.dev/docs/apps/launch/deployment/deploy-to-hosting-service): This resource provides general guidance on the requirements of deployment including environment variables, secrets, and persistent data.
-
-When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
-
-## Gotchas / Troubleshooting
-
-### Database tables don't exist
-
-If you get an error like:
-
-```
-The table `main.Session` does not exist in the current database.
-```
-
-Create the database for Prisma. Run the `setup` script in `package.json` using `npm`, `yarn` or `pnpm`.
-
-### Navigating/redirecting breaks an embedded app
-
-Embedded apps must maintain the user session, which can be tricky inside an iFrame. To avoid issues:
-
-1. Use `Link` from `react-router` or `@shopify/polaris`. Do not use `<a>`.
-2. Use `redirect` returned from `authenticate.admin`. Do not use `redirect` from `react-router`
-3. Use `useSubmit` from `react-router`.
-
-This only applies if your app is embedded, which it will be by default.
-
-### Webhooks: shop-specific webhook subscriptions aren't updated
-
-If you are registering webhooks in the `afterAuth` hook, using `shopify.registerWebhooks`, you may find that your subscriptions aren't being updated.
-
-Instead of using the `afterAuth` hook declare app-specific webhooks in the `shopify.app.toml` file. This approach is easier since Shopify will automatically sync changes every time you run `deploy` (e.g: `npm run deploy`). Please read these guides to understand more:
-
-1. [app-specific vs shop-specific webhooks](https://shopify.dev/docs/apps/build/webhooks/subscribe#app-specific-subscriptions)
-2. [Create a subscription tutorial](https://shopify.dev/docs/apps/build/webhooks/subscribe/get-started?deliveryMethod=https)
-
-If you do need shop-specific webhooks, keep in mind that the package calls `afterAuth` in 2 scenarios:
-
-- After installing the app
-- When an access token expires
-
-During normal development, the app won't need to re-authenticate most of the time, so shop-specific subscriptions aren't updated. To force your app to update the subscriptions, uninstall and reinstall the app. Revisiting the app will call the `afterAuth` hook.
-
-### Webhooks: Admin created webhook failing HMAC validation
-
-Webhooks subscriptions created in the [Shopify admin](https://help.shopify.com/en/manual/orders/notifications/webhooks) will fail HMAC validation. This is because the webhook payload is not signed with your app's secret key.
-
-The recommended solution is to use [app-specific webhooks](https://shopify.dev/docs/apps/build/webhooks/subscribe#app-specific-subscriptions) defined in your toml file instead. Test your webhooks by triggering events manually in the Shopify admin(e.g. Updating the product title to trigger a `PRODUCTS_UPDATE`).
-
-### Webhooks: Admin object undefined on webhook events triggered by the CLI
-
-When you trigger a webhook event using the Shopify CLI, the `admin` object will be `undefined`. This is because the CLI triggers an event with a valid, but non-existent, shop. The `admin` object is only available when the webhook is triggered by a shop that has installed the app. This is expected.
-
-Webhooks triggered by the CLI are intended for initial experimentation testing of your webhook configuration. For more information on how to test your webhooks, see the [Shopify CLI documentation](https://shopify.dev/docs/apps/tools/cli/commands#webhook-trigger).
-
-### Incorrect GraphQL Hints
-
-By default the [graphql.vscode-graphql](https://marketplace.visualstudio.com/items?itemName=GraphQL.vscode-graphql) extension for will assume that GraphQL queries or mutations are for the [Shopify Admin API](https://shopify.dev/docs/api/admin). This is a sensible default, but it may not be true if:
-
-1. You use another Shopify API such as the storefront API.
-2. You use a third party GraphQL API.
-
-If so, please update [.graphqlrc.ts](https://github.com/Shopify/shopify-app-template-react-router/blob/main/.graphqlrc.ts).
-
-### Using Defer & await for streaming responses
-
-By default the CLI uses a cloudflare tunnel. Unfortunately cloudflare tunnels wait for the Response stream to finish, then sends one chunk. This will not affect production.
-
-To test [streaming using await](https://reactrouter.com/api/components/Await#await) during local development we recommend [localhost based development](https://shopify.dev/docs/apps/build/cli-for-apps/networking-options#localhost-based-development).
-
-### "nbf" claim timestamp check failed
-
-This is because a JWT token is expired. If you are consistently getting this error, it could be that the clock on your machine is not in sync with the server. To fix this ensure you have enabled "Set time and date automatically" in the "Date and Time" settings on your computer.
-
-### Using MongoDB and Prisma
-
-If you choose to use MongoDB with Prisma, there are some gotchas in Prisma's MongoDB support to be aware of. Please see the [Prisma SessionStorage README](https://www.npmjs.com/package/@shopify/shopify-app-session-storage-prisma#mongodb).
-
-### Unable to require(`C:\...\query_engine-windows.dll.node`).
-
-Unable to require(`C:\...\query_engine-windows.dll.node`).
-The Prisma engines do not seem to be compatible with your system.
-
-query_engine-windows.dll.node is not a valid Win32 application.
-
-**Fix:** Set the environment variable:
-
-```shell
-PRISMA_CLIENT_ENGINE_TYPE=binary
-```
-
-This forces Prisma to use the binary engine mode, which runs the query engine as a separate process and can work via emulation on Windows ARM64.
-
-## Resources
-
-React Router:
-
-- [React Router docs](https://reactrouter.com/home)
-
-Shopify:
-
-- [Intro to Shopify apps](https://shopify.dev/docs/apps/getting-started)
-- [Shopify App React Router docs](https://shopify.dev/docs/api/shopify-app-react-router)
-- [Shopify CLI](https://shopify.dev/docs/apps/tools/cli)
-- [Shopify App Bridge](https://shopify.dev/docs/api/app-bridge-library).
-- [Polaris Web Components](https://shopify.dev/docs/api/app-home/polaris-web-components).
-- [App extensions](https://shopify.dev/docs/apps/app-extensions/list)
-- [Shopify Functions](https://shopify.dev/docs/api/functions)
-
-Internationalization:
-
-- [Internationalizing your app](https://shopify.dev/docs/apps/best-practices/internationalization/getting-started)
+##Troubleshooting
