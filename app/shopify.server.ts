@@ -7,7 +7,7 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 
-const SHIPPING_SERVICE_NAME = "CCS";
+const SHIPPING_SERVICE_NAME = "BYC Shipping";
 export const CCS_REQUIRED_MESSAGE =
   "Carrier Calculated Shipping must be enabled for this store before CCS can be registered.";
 
@@ -78,8 +78,18 @@ export async function registerTestShippingService(
 
   const appUrl = process.env.SHOPIFY_APP_URL;
   if (!appUrl) {
-    console.error("[registerTestShippingService] Cannot register CCS: SHOPIFY_APP_URL is not set");
-    return { ccsRequired: false };
+    const message =
+      "SHOPIFY_APP_URL is not set in this environment — carrier service cannot be registered.";
+    console.error(`[registerTestShippingService] ${message}`);
+    // Persist this so it surfaces in the app UI instead of failing silently.
+    await safePrismaCall("upsert (missing SHOPIFY_APP_URL)", () =>
+      prisma.shippingRegistration.upsert({
+        where: { shop },
+        update: { ccsRequired: true, message },
+        create: { shop, ccsRequired: true, message },
+      }),
+    );
+    return { ccsRequired: true, message };
   }
 
   const callbackUrl = new URL("/api/shipping-rates", appUrl).toString();
