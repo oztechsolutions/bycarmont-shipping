@@ -1,4 +1,9 @@
-import { useLoaderData, useFetcher } from "react-router";
+import {
+  useLoaderData,
+  useFetcher,
+  useRouteError,
+  isRouteErrorResponse,
+} from "react-router";
 import { authenticate } from "../shopify.server";
 
 /* ------------------------------------------------------------------ */
@@ -41,6 +46,37 @@ const ORDER_QUERY = `#graphql
 `;
 
 /* ------------------------------------------------------------------ */
+/* Error helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+/* Turns anything thrown (Error, Response, fetch failure) into readable text */
+async function describeError(err) {
+  if (err instanceof Response) {
+    let text = "";
+    try {
+      text = (await err.clone().text()).slice(0, 500);
+    } catch {
+      /* ignore */
+    }
+    return `HTTP ${err.status} ${err.statusText}${text ? ` - ${text}` : ""}`;
+  }
+  const cause = err?.cause?.message ? ` (cause: ${err.cause.message})` : "";
+  return `${err?.message ?? String(err)}${cause}`;
+}
+
+/* Auth redirects (3xx Responses) must be rethrown or the embedded app breaks */
+const isRedirect = (err) =>
+  err instanceof Response && err.status >= 300 && err.status < 400;
+
+/* Fail loudly if .env wasn't loaded (common after restarting the dev server) */
+function requireEnv(...names) {
+  const missing = names.filter((n) => !process.env[n]);
+  if (missing.length) {
+    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Server helpers (only used by loader/action, so not bundled client)  */
 /* ------------------------------------------------------------------ */
 async function fetchOrder(admin, orderId) {
@@ -48,6 +84,13 @@ async function fetchOrder(admin, orderId) {
     variables: { id: `gid://shopify/Order/${orderId}` },
   });
   const json = await response.json();
+
+  // Previously ignored, and this is what turned real failures into "404"
+  if (json.errors?.length) {
+    throw new Error(
+      `Shopify GraphQL error: ${json.errors.map((e) => e.message).join(" | ")}`,
+    );
+  }
   return json.data?.order ?? null;
 }
 
@@ -171,46 +214,52 @@ function buildPreview(order, collectionDate) {
 
 /**
  * STEP 1 - request a quote.
- * Hits the QUOTES endpoint (no order id in the path) and returns the quoteId
- * plus Fast Courier's own order id, which step 2 needs.
- *
- * New env var required: FAST_COURIER_QUOTE_URL (the full quotes endpoint URL).
+ * Returns the quoteId plus Fast Courier's own order id, which step 2 needs.
  * ASSUMPTION: response field names are a guess. Check the logged response.
  */
 async function requestQuote(preview) {
   const e = process.env;
-  const res = await fetch(`${e.FAST_COURIER_BASE_URL}${e.FAST_COURIER_QUOTES_PATH}`, {
-    method: "POST",
-    headers: fastCourierHeaders(),
-    body: JSON.stringify({
-      pickupSuburb: preview.sender.suburb,
-      pickupState: preview.sender.state,
-      pickupPostcode: preview.sender.postcode,
-      pickupBuildingType: e.FAST_COURIER_PICKUP_BUILDING_TYPE,
-      destinationSuburb: preview.receiver.suburb,
-      destinationState: preview.receiver.state,
-      destinationPostcode: preview.receiver.postcode,
-      destinationBuildingType: e.FAST_COURIER_DESTINATION_BUILDING_TYPE,
-      isPickupTailLift: e.FAST_COURIER_PICKUP_TAIL_LIFT === "true",
-      isDropOffTailLift: e.FAST_COURIER_DROPOFF_TAIL_LIFT === "true",
-      isDropOffPOBox: e.FAST_COURIER_DROPOFF_PO_BOX === "true",
-      items: preview.items.map((i) => ({
-        type: i.type,
-        contents: i.contents,
-        length: i.length,
-        width: i.width,
-        height: i.height,
-        weight: i.weight,
-        quantity: i.quantity,
-      })),
-    }),
-  });
+  requireEnv(
+    "FAST_COURIER_BASE_URL",
+    "FAST_COURIER_QUOTES_PATH",
+    "FAST_COURIER_SECRET_KEY",
+  );
+
+  const res = await fetch(
+    `${e.FAST_COURIER_BASE_URL}${e.FAST_COURIER_QUOTES_PATH}`,
+    {
+      method: "POST",
+      headers: fastCourierHeaders(),
+      body: JSON.stringify({
+        pickupSuburb: preview.sender.suburb,
+        pickupState: preview.sender.state,
+        pickupPostcode: preview.sender.postcode,
+        pickupBuildingType: e.FAST_COURIER_PICKUP_BUILDING_TYPE,
+        destinationSuburb: preview.receiver.suburb,
+        destinationState: preview.receiver.state,
+        destinationPostcode: preview.receiver.postcode,
+        destinationBuildingType: e.FAST_COURIER_DESTINATION_BUILDING_TYPE,
+        isPickupTailLift: e.FAST_COURIER_PICKUP_TAIL_LIFT === "true",
+        isDropOffTailLift: e.FAST_COURIER_DROPOFF_TAIL_LIFT === "true",
+        isDropOffPOBox: e.FAST_COURIER_DROPOFF_PO_BOX === "true",
+        items: preview.items.map((i) => ({
+          type: i.type,
+          contents: i.contents,
+          length: i.length,
+          width: i.width,
+          height: i.height,
+          weight: i.weight,
+          quantity: i.quantity,
+        })),
+      }),
+    },
+  );
 
   const body = await res.json().catch(() => null);
   console.log("Fast Courier quote response:", JSON.stringify(body, null, 2));
 
   if (!res.ok) {
-    throw new Error(apiError(body, `Quote failed (${res.status})`));
+    throw new Error(`Quote: ${apiError(body, `failed (${res.status})`)}`);
   }
 
   const first = body?.data?.[0] ?? body?.quotes?.[0] ?? body;
@@ -223,13 +272,16 @@ async function requestQuote(preview) {
     first?.order_id ??
     null;
 
-  if (!quoteId) throw new Error("Quote response had no quoteId");
+  if (!quoteId) {
+    throw new Error("Quote response had no quoteId (see server log for body)");
+  }
   return { quoteId, fcOrderId };
 }
 
-/* STEP 2 - book: POST {FAST_COURIER_BOOKING_URL}/{fastCourierOrderId} */
+/* STEP 2 - save booking details: POST {BASE}{SAVE_BOOKING_PATH}/{fcOrderId} */
 async function bookCourier(fcOrderId, quoteId, preview) {
   const e = process.env;
+  requireEnv("FAST_COURIER_BASE_URL", "FAST_COURIER_SAVE_BOOKING_PATH");
   const extended = e.FAST_COURIER_EXTENDED_LIABILITY ?? "0";
 
   const payload = {
@@ -285,15 +337,16 @@ async function bookCourier(fcOrderId, quoteId, preview) {
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     console.error("Fast Courier booking failed", res.status, body);
-    throw new Error(apiError(body, `Booking failed (${res.status})`));
+    throw new Error(`Save booking: ${apiError(body, `failed (${res.status})`)}`);
   }
   return body;
 }
 
-/* STEP 3 - confirm the booking: POST {BASE}{BOOKING_PATH}/{fastCourierOrderId}
+/* STEP 3 - confirm the booking: POST {BASE}{BOOKING_PATH}/{fcOrderId}
    ASSUMPTION: takes the order id in the path with no body. Check the docs. */
 async function confirmBooking(fcOrderId) {
   const e = process.env;
+  requireEnv("FAST_COURIER_BASE_URL", "FAST_COURIER_BOOKING_PATH");
   const url = `${e.FAST_COURIER_BASE_URL}${e.FAST_COURIER_BOOKING_PATH}/${fcOrderId}`;
   console.log("Fast Courier order-booking URL:", url);
 
@@ -301,7 +354,7 @@ async function confirmBooking(fcOrderId) {
   const body = await res.json().catch(() => null);
   console.log("Fast Courier order-booking response:", JSON.stringify(body, null, 2));
   if (!res.ok) {
-    throw new Error(apiError(body, `Order booking failed (${res.status})`));
+    throw new Error(`Confirm booking: ${apiError(body, `failed (${res.status})`)}`);
   }
   return body;
 }
@@ -310,24 +363,36 @@ async function confirmBooking(fcOrderId) {
 /* Loader / action                                                     */
 /* ------------------------------------------------------------------ */
 export const loader = async ({ request, params }) => {
+  // Outside try/catch on purpose: auth throws redirects that must pass through
   const { admin } = await authenticate.admin(request);
-  const order = await fetchOrder(admin, params.orderId);
-  if (!order) throw new Response("Order not found", { status: 404 });
 
-  const isFastCourier = order.shippingLines.nodes.some((l) =>
-    [l.title, l.code, l.carrierIdentifier].some(
-      (v) => v && FAST_COURIER_PATTERN.test(v),
-    ),
-  );
+  try {
+    const order = await fetchOrder(admin, params.orderId);
+    if (!order) {
+      return {
+        error: `Order gid://shopify/Order/${params.orderId} not found (Shopify returned no order and no errors).`,
+      };
+    }
 
-  return { order, isFastCourier, preview: buildPreview(order) };
+    const isFastCourier = order.shippingLines.nodes.some((l) =>
+      [l.title, l.code, l.carrierIdentifier].some(
+        (v) => v && FAST_COURIER_PATTERN.test(v),
+      ),
+    );
+
+    return { order, isFastCourier, preview: buildPreview(order), error: null };
+  } catch (err) {
+    if (isRedirect(err)) throw err;
+    console.error("Loader failed:", err);
+    return { error: await describeError(err) };
+  }
 };
 
 export const action = async ({ request, params }) => {
   const { admin } = await authenticate.admin(request);
-  const form = await request.formData();
 
   try {
+    const form = await request.formData();
     const order = await fetchOrder(admin, params.orderId);
     if (!order) throw new Error("Order not found");
 
@@ -339,17 +404,19 @@ export const action = async ({ request, params }) => {
       ({ quoteId, fcOrderId } = await requestQuote(preview));
     }
 
-    // Fast Courier's own order id from the quote. The Shopify id is only a
-    // last-resort fallback (it is what caused the "No query results" error).
     if (!fcOrderId) {
-      throw new Error("Quote response had no Fast Courier order id (check the logged quote response)");
+      throw new Error(
+        "Quote response had no Fast Courier order id (check the logged quote response)",
+      );
     }
     const saved = await bookCourier(fcOrderId, quoteId, preview);
     const confirmed = await confirmBooking(fcOrderId);
 
     return { ok: true, booking: confirmed ?? saved };
   } catch (err) {
-    return { ok: false, error: err.message };
+    if (isRedirect(err)) throw err;
+    console.error("Action failed:", err);
+    return { ok: false, error: await describeError(err) };
   }
 };
 
@@ -408,9 +475,24 @@ function Field({ label, value }) {
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 export default function OrderFulfillmentConfirmation() {
-  const { order, isFastCourier, preview } = useLoaderData();
+  const data = useLoaderData();
   const fetcher = useFetcher();
 
+  // Loader failed: show the real reason instead of a 404 / generic error
+  if (data.error) {
+    return (
+      <s-page heading="Fulfil order">
+        <s-link slot="breadcrumb-actions" href="/app">
+          Orders
+        </s-link>
+        <s-banner tone="critical" heading="Couldn't load this order">
+          {data.error}
+        </s-banner>
+      </s-page>
+    );
+  }
+
+  const { order, isFastCourier, preview } = data;
   const { sender, receiver, carrier, items, contents } = preview;
   const booked = fetcher.data?.ok === true;
   const failed = fetcher.data?.ok === false;
@@ -434,7 +516,11 @@ export default function OrderFulfillmentConfirmation() {
           {reference ? ` · Reference ${reference}` : ""}.
         </s-banner>
       )}
-      {failed && <s-banner tone="critical">{fetcher.data.error}</s-banner>}
+      {failed && (
+        <s-banner tone="critical" heading="Booking failed">
+          {fetcher.data.error}
+        </s-banner>
+      )}
 
       {/* Status ---------------------------------------------------------- */}
       <s-section>
@@ -534,6 +620,28 @@ export default function OrderFulfillmentConfirmation() {
           This order doesn't use Fast Courier shipping, so booking is disabled.
         </s-banner>
       )}
+    </s-page>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Error boundary: shows the real error instead of "Application Error" */
+/* ------------------------------------------------------------------ */
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error("Route ErrorBoundary caught:", error);
+
+  const message = isRouteErrorResponse(error)
+    ? `${error.status} ${error.statusText} - ${
+        typeof error.data === "string" ? error.data : JSON.stringify(error.data)
+      }`
+    : (error?.stack ?? error?.message ?? String(error));
+
+  return (
+    <s-page heading="Something went wrong">
+      <s-banner tone="critical">
+        <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{message}</pre>
+      </s-banner>
     </s-page>
   );
 }
