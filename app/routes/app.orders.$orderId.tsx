@@ -85,13 +85,24 @@ async function fetchOrder(admin, orderId) {
   });
   const json = await response.json();
 
-  // Previously ignored, and this is what turned real failures into "404"
   if (json.errors?.length) {
     throw new Error(
       `Shopify GraphQL error: ${json.errors.map((e) => e.message).join(" | ")}`,
     );
   }
   return json.data?.order ?? null;
+}
+
+/* Finds the shipping line that looks like Fast Courier, and which field
+   matched, so the UI can show why an order was detected. */
+function findFastCourierLine(order) {
+  for (const line of order.shippingLines.nodes) {
+    const matchedOn = ["title", "code", "carrierIdentifier"].find(
+      (field) => line[field] && FAST_COURIER_PATTERN.test(line[field]),
+    );
+    if (matchedOn) return { line, matchedOn };
+  }
+  return { line: null, matchedOn: null };
 }
 
 /* Next business day in Sydney time, as YYYY-MM-DD */
@@ -190,7 +201,9 @@ function buildPreview(order, collectionDate) {
       ) * 100,
     ) / 100;
 
-  const shippingTitle = order.shippingLines.nodes[0]?.title ?? "Fast Courier";
+  // Prefer the line that matched Fast Courier; otherwise the first line
+  const { line: fcLine, matchedOn } = findFastCourierLine(order);
+  const shippingLine = fcLine ?? order.shippingLines.nodes[0] ?? null;
 
   return {
     sender,
@@ -202,7 +215,13 @@ function buildPreview(order, collectionDate) {
       .join(", ")
       .slice(0, 250),
     carrier: {
-      shippingTitle,
+      shippingTitle: shippingLine?.title ?? "",
+      shippingCode: shippingLine?.code ?? "",
+      carrierIdentifier: shippingLine?.carrierIdentifier ?? "",
+      shippingSource: shippingLine?.source ?? "",
+      matchedOn,
+      shippingOriginal: shippingLine?.originalPriceSet?.shopMoney ?? null,
+      shippingCharged: shippingLine?.discountedPriceSet?.shopMoney ?? null,
       authorityToLeave: e.FAST_COURIER_AUTHORITY_TO_LEAVE === "true",
       collectionDate: collectionDate || nextBusinessDay(),
       pickupTimeWindow: e.FAST_COURIER_PICKUP_TIME_WINDOW ?? "9am to 5pm",
@@ -374,11 +393,7 @@ export const loader = async ({ request, params }) => {
       };
     }
 
-    const isFastCourier = order.shippingLines.nodes.some((l) =>
-      [l.title, l.code, l.carrierIdentifier].some(
-        (v) => v && FAST_COURIER_PATTERN.test(v),
-      ),
-    );
+    const isFastCourier = findFastCourierLine(order).line !== null;
 
     return { order, isFastCourier, preview: buildPreview(order), error: null };
   } catch (err) {
@@ -395,6 +410,14 @@ export const action = async ({ request, params }) => {
     const form = await request.formData();
     const order = await fetchOrder(admin, params.orderId);
     if (!order) throw new Error("Order not found");
+
+    // Server-side guard: never book Fast Courier for other shipping methods
+    if (!findFastCourierLine(order).line) {
+      const method = order.shippingLines.nodes[0]?.title ?? "unknown";
+      throw new Error(
+        `This order's shipping method ("${method}") is not Fast Courier, so it can't be booked here.`,
+      );
+    }
 
     const preview = buildPreview(order, form.get("collectionDate"));
 
@@ -438,6 +461,20 @@ const statusTone = (s = "") => {
 };
 
 const dmy = (iso) => iso.split("-").reverse().join("-"); // 2026-09-15 -> 15-09-2026
+
+const money = (m) =>
+  m
+    ? new Intl.NumberFormat("en-AU", {
+        style: "currency",
+        currency: m.currencyCode,
+      }).format(Number(m.amount))
+    : "—";
+
+const MATCH_LABELS = {
+  title: "service title",
+  code: "service code",
+  carrierIdentifier: "carrier ID",
+};
 
 function Party({ heading, p }) {
   return (
@@ -545,17 +582,58 @@ export default function OrderFulfillmentConfirmation() {
 
           <s-stack gap="small-200">
             <s-heading>Shipping</s-heading>
-            <s-text type="strong">Fast Courier</s-text>
-            <Field label="Service" value={carrier.shippingTitle} />
-            <Field
-              label="Authority to leave"
-              value={carrier.authorityToLeave ? "Yes" : "No"}
-            />
-            <Field label="Collection date" value={dmy(carrier.collectionDate)} />
-            <Field label="Pickup time" value={carrier.pickupTimeWindow} />
-            <Field label="Contents" value={contents || "—"} />
-            {preview.specialInstructions && (
-              <Field label="Instructions" value={preview.specialInstructions} />
+
+            {/* Exactly what the customer selected, straight from Shopify */}
+            {order.shippingLines.nodes.length === 0 && (
+              <s-text>No shipping method on this order</s-text>
+            )}
+            {order.shippingLines.nodes.map((line) => {
+              const charged = line.discountedPriceSet?.shopMoney;
+              const original = line.originalPriceSet?.shopMoney;
+              return (
+                <s-stack key={line.id} gap="small-500">
+                  <s-text type="strong">{line.title}</s-text>
+                  <Field label="Service code" value={line.code || "—"} />
+                  <Field
+                    label="Carrier ID"
+                    value={line.carrierIdentifier || "—"}
+                  />
+                  <Field label="Source" value={line.source || "—"} />
+                  <Field label="Shipping charged" value={money(charged)} />
+                  {original && original.amount !== charged?.amount && (
+                    <Field label="Original price" value={money(original)} />
+                  )}
+                </s-stack>
+              );
+            })}
+
+            {/* Booking details: only relevant when we will book Fast Courier */}
+            {isFastCourier && (
+              <s-stack gap="small-500">
+                <s-heading>Fast Courier booking</s-heading>
+                {carrier.matchedOn && (
+                  <Field
+                    label="Detected via"
+                    value={MATCH_LABELS[carrier.matchedOn]}
+                  />
+                )}
+                <Field
+                  label="Authority to leave"
+                  value={carrier.authorityToLeave ? "Yes" : "No"}
+                />
+                <Field
+                  label="Collection date"
+                  value={dmy(carrier.collectionDate)}
+                />
+                <Field label="Pickup time" value={carrier.pickupTimeWindow} />
+                <Field label="Contents" value={contents || "—"} />
+                {preview.specialInstructions && (
+                  <Field
+                    label="Instructions"
+                    value={preview.specialInstructions}
+                  />
+                )}
+              </s-stack>
             )}
           </s-stack>
         </s-grid>
@@ -603,7 +681,11 @@ export default function OrderFulfillmentConfirmation() {
               requests a quote and books the pickup.
             </s-paragraph>
             <fetcher.Form method="post">
-              <input type="hidden" name="collectionDate" value={carrier.collectionDate} />
+              <input
+                type="hidden"
+                name="collectionDate"
+                value={carrier.collectionDate}
+              />
               <s-button
                 variant="primary"
                 type="submit"
@@ -617,7 +699,8 @@ export default function OrderFulfillmentConfirmation() {
         </s-section>
       ) : (
         <s-banner tone="info">
-          This order doesn't use Fast Courier shipping, so booking is disabled.
+          This order uses "{carrier.shippingTitle || "no shipping method"}", not
+          Fast Courier, so booking is disabled.
         </s-banner>
       )}
     </s-page>
