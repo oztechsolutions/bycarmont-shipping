@@ -66,6 +66,7 @@ type FastCourierQuote = {
 type FastCourierResponse = {
   status?: boolean;
   message?: string;
+  orderId?: string;
   data?: FastCourierQuote[] | { quotes?: FastCourierQuote[] };
   quotes?: FastCourierQuote[];
   rates?: FastCourierQuote[];
@@ -147,7 +148,7 @@ type RateLogEntry = {
 /* ------------------------------------------------------------------ */
 
 const FAST_DELIVERY_WEIGHT_LIMIT_GRAMS = envNumber("FAST_DELIVERY_WEIGHT_LIMIT_GRAMS", 30_000);
-const FAST_COURIER_QUOTES_URL = process.env.FAST_COURIER_QUOTES_URL || "https://enterprise-api.fastcourier.com.au/api/quotes";
+const FAST_COURIER_QUOTES_URL = process.env.FAST_COURIER_BASE_URL + process.env.FAST_COURIER_QUOTES_PATH || "https://enterprise-api.fastcourier.com.au/api/quotes";
 
 // How many quotes we try to hand back to Shopify in total, and how many of
 // those we prefer from each of the couriers below.
@@ -590,6 +591,18 @@ async function getFastDeliveryRates(
     return [];
   }
 
+
+  // Fast Courier's own order id for this quote request. We need to thread
+  // this through to the order webhook later (via service_code), since
+  // nothing else in the Shopify rate-request/order flow carries it for us.
+  const fastCourierOrderId = result.orderId;
+
+  if (!fastCourierOrderId) {
+    log.status = "error";
+    log.errorMessage = "Fast Courier response missing orderId";
+    return [];
+  }
+
   const quotes: FastCourierQuote[] = Array.isArray(result.data)
     ? result.data
     : result.data?.quotes ?? result.quotes ?? result.rates ?? [];
@@ -635,13 +648,14 @@ async function getFastDeliveryRates(
   );
 
   log.status = "success";
-
+  
   return selectedQuotes.map(({ entry, price, courierName, serviceName, eta }) => {
     const description = [courierName, serviceName, eta].filter(Boolean).join(" · ");
+    const quoteId = entry.quote_id ?? entry.id ?? `${courierName}-${serviceName}`;
 
     return {
-      service_name: serviceName || courierName || "Fast courier shipping",
-      service_code: `fast-courier-${entry.quote_id ?? entry.id ?? `${courierName}-${serviceName}`}`,
+      service_name: "(FC)" + serviceName || courierName || "Fast courier shipping",
+      service_code: `fast-courier:${fastCourierOrderId}:${quoteId}`,
       description: description || "Fast Courier shipping",
       total_price: String(Math.round(price * 100)),
       currency: entry.currency || currency,
@@ -905,7 +919,7 @@ async function getSmartSendShippingRate(
     const description = [courierName, serviceName, eta].filter(Boolean).join(" · ");
 
     return {
-      service_name: serviceName || courierName || "Smart Send shipping",
+      service_name: "(SS)" + serviceName || courierName || "Smart Send shipping",
       service_code: `smart-send-${entry.priceId ?? `${courierName}-${serviceName}`}`,
       description: description || "Smart Send shipping",
       total_price: String(Math.round(price * 100)),

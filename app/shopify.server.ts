@@ -225,7 +225,7 @@ export async function registerTestShippingService(
           input: {
             name: SHIPPING_SERVICE_NAME,
             callbackUrl,
-            supportsServiceDiscovery: true,
+            supportsServiceDiscovery: false,
             active: true,
           },
         },

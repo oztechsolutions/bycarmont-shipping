@@ -1,0 +1,10 @@
+{
+  "name": "fulfil-by-fast-courier",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "preact": "^10.10.x",
+    "@preact/signals": "^2.3.x",
+    "@shopify/ui-extensions": "2026.7.x"
+  }
+}
