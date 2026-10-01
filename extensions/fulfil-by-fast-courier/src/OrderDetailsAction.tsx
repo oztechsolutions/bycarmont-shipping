@@ -19,7 +19,7 @@ function FulfilByFastCourierAction() {
   };
 
   return (
-    <s-admin-action heading="Fulfil by Fast Courier">
+    <s-admin-action heading="Fulfil by BYCShipping">
       <s-text>
         Review and fulfil this order.
       </s-text>
