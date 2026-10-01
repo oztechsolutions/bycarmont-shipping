@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   useLoaderData,
   useFetcher,
@@ -153,6 +154,23 @@ const nextBusinessDay = () => {
   return d.toISOString().slice(0, 10);
 };
 
+/* Server-side check of the (editable) collection date and pickup time */
+function validateSchedule({ collectionDate, pickupTimeWindow }) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(collectionDate ?? "") ||
+    Number.isNaN(Date.parse(collectionDate))
+  ) {
+    throw new Error("Collection date must be a valid date (yyyy-mm-dd).");
+  }
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Australia/Sydney",
+  });
+  if (collectionDate < today) {
+    throw new Error(`Collection date ${collectionDate} is in the past.`);
+  }
+  if (!pickupTimeWindow) throw new Error("Choose a pickup time.");
+}
+
 /* Same auth on every Fast Courier call. Sends both header styles because
    the calls previously used different ones. Once you confirm which one
    the docs require, delete the other. */
@@ -178,7 +196,7 @@ const apiError = (body, fallback) => {
  * Everything the page shows AND everything the booking uses is built here,
  * so what the merchant sees is exactly what gets sent.
  */
-function buildPreview(order, collectionDate) {
+function buildPreview(order, collectionDate, pickupTime) {
   const e = process.env;
   const a = order.shippingAddress ?? {};
 
@@ -277,10 +295,21 @@ function buildPreview(order, collectionDate) {
       ...ids,
       authorityToLeave: e.FAST_COURIER_AUTHORITY_TO_LEAVE === "true",
       collectionDate: collectionDate || nextBusinessDay(),
+      // Editable on the page: the submitted value wins, env is the default
       pickupTimeWindow:
-        courier === "smartSend"
-          ? (e.SMARTSEND_PICKUP_TIME ?? "")
-          : (e.FAST_COURIER_PICKUP_TIME_WINDOW ?? "9am to 5pm"),
+        pickupTime ||
+        (courier === "smartSend"
+          ? (e.SMARTSEND_PICKUP_TIME ?? "9am to 5pm")
+          : (e.FAST_COURIER_PICKUP_TIME_WINDOW ?? "9am to 5pm")),
+      // Optional comma-separated lists. When set, the page shows a dropdown.
+      pickupTimeOptions: (
+        (courier === "smartSend"
+          ? e.SMARTSEND_PICKUP_TIME_OPTIONS
+          : e.FAST_COURIER_PICKUP_TIME_OPTIONS) ?? ""
+      )
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean),
     },
     specialInstructions: order.note ?? "",
     docsEmail: e.FAST_COURIER_DOCS_EMAIL ?? sender.email,
@@ -441,7 +470,7 @@ async function bookSmartSend(preview, orderName) {
   }
   if (!carrier.pickupTimeWindow) {
     throw new Error(
-      "Missing SMARTSEND_PICKUP_TIME (must be one of Smart Send's valid pickup time values).",
+      "Choose a pickup time (must be one of Smart Send's valid pickup time values).",
     );
   }
 
@@ -592,7 +621,11 @@ export const action = async ({ request, params }) => {
     const order = await fetchOrder(admin, params.orderId);
     if (!order) throw new Error("Order not found");
 
-    const preview = buildPreview(order, form.get("collectionDate"));
+    const preview = buildPreview(
+      order,
+      String(form.get("collectionDate") ?? "").trim(),
+      String(form.get("pickupTime") ?? "").trim(),
+    );
     const { courier } = preview.carrier;
 
     // Server-side guard: only book couriers this page supports
@@ -602,6 +635,8 @@ export const action = async ({ request, params }) => {
         `This order's shipping method ("${method}") is not Fast Courier or Smart Send, so it can't be booked here.`,
       );
     }
+
+    validateSchedule(preview.carrier);
 
     // Ids come ONLY from the order's saved shipping code. No quote is requested.
     if (courier === "fastCourier") {
@@ -699,6 +734,13 @@ function Field({ label, value }) {
 export default function OrderFulfillmentConfirmation() {
   const data = useLoaderData();
   const fetcher = useFetcher();
+  // Editable schedule, starts from the loader defaults
+  const [collectionDate, setCollectionDate] = useState(
+    data.preview?.carrier?.collectionDate ?? "",
+  );
+  const [pickupTime, setPickupTime] = useState(
+    data.preview?.carrier?.pickupTimeWindow ?? "",
+  );
 
   // Loader failed: show the real reason instead of a 404 / generic error
   if (data.error) {
@@ -834,12 +876,9 @@ export default function OrderFulfillmentConfirmation() {
                 )}
                 <Field
                   label="Collection date"
-                  value={dmy(carrier.collectionDate)}
+                  value={collectionDate ? dmy(collectionDate) : "—"}
                 />
-                <Field
-                  label="Pickup time"
-                  value={carrier.pickupTimeWindow || "—"}
-                />
+                <Field label="Pickup time" value={pickupTime || "—"} />
                 <Field label="Contents" value={contents || "—"} />
                 {preview.specialInstructions && (
                   <Field
@@ -884,28 +923,57 @@ export default function OrderFulfillmentConfirmation() {
       {/* Fulfil ---------------------------------------------------------- */}
       {isSupportedCourier ? (
         <s-section heading="Book courier">
-          <s-stack
-            direction="inline"
-            justifyContent="space-between"
-            alignItems="center"
-            gap="base"
-          >
+          <s-stack gap="base">
             <s-paragraph>
-              Check the sender, receiver and shipping details above. Fulfilling
-              the order books the pickup with {carrier.courierLabel} using the
-              quote saved with this order.
+              Check the sender, receiver and shipping details above, and set
+              the collection date and pickup time. Fulfilling the order books
+              the pickup with {carrier.courierLabel} using the quote saved with
+              this order.
             </s-paragraph>
-            <fetcher.Form method="post">
-              <input
-                type="hidden"
-                name="collectionDate"
-                value={carrier.collectionDate}
+
+            <s-stack direction="inline" gap="base">
+              <s-date-field
+                label="Collection date"
+                details="Format yyyy-mm-dd, e.g. 2026-10-02"
+                value={collectionDate}
+                onChange={(e) => setCollectionDate(e.currentTarget.value)}
               />
+              {carrier.pickupTimeOptions.length > 0 ? (
+                <s-select
+                  label="Pickup time"
+                  value={pickupTime}
+                  onChange={(e) => setPickupTime(e.currentTarget.value)}
+                >
+                  {(carrier.pickupTimeOptions.includes(pickupTime) || !pickupTime
+                    ? carrier.pickupTimeOptions
+                    : [pickupTime, ...carrier.pickupTimeOptions]
+                  ).map((o) => (
+                    <s-option key={o} value={o}>
+                      {o}
+                    </s-option>
+                  ))}
+                </s-select>
+              ) : (
+                <s-text-field
+                  label="Pickup time"
+                  placeholder="9am to 5pm"
+                  details="Example: 9am to 5pm"
+                  value={pickupTime}
+                  onChange={(e) => setPickupTime(e.currentTarget.value)}
+                />
+              )}
+            </s-stack>
+
+            <fetcher.Form method="post">
+              <input type="hidden" name="collectionDate" value={collectionDate} />
+              <input type="hidden" name="pickupTime" value={pickupTime} />
               <s-button
                 variant="primary"
                 type="submit"
                 loading={submitting || undefined}
-                disabled={booked || missingIds || undefined}
+                disabled={
+                  booked || missingIds || !collectionDate || !pickupTime || undefined
+                }
               >
                 Fulfil by {carrier.courierLabel}
               </s-button>
