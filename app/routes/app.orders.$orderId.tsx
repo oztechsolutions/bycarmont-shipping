@@ -9,7 +9,10 @@ import { authenticate } from "../shopify.server";
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
-const FAST_COURIER_PATTERN = /fast[\s_-]*courier/i;
+const COURIERS = {
+  fastCourier: { label: "Fast Courier", pattern: /fast[\s_-]*courier/i },
+  smartSend: { label: "Smart Send", pattern: /smart[\s_-]*send/i },
+};
 
 const ORDER_QUERY = `#graphql
   query GetOrder($id: ID!) {
@@ -93,16 +96,50 @@ async function fetchOrder(admin, orderId) {
   return json.data?.order ?? null;
 }
 
-/* Finds the shipping line that looks like Fast Courier, and which field
-   matched, so the UI can show why an order was detected. */
-function findFastCourierLine(order) {
+/* Finds the shipping line matching a courier, and which field matched,
+   so the UI can show why an order was detected. */
+function findCourierLine(order, pattern) {
   for (const line of order.shippingLines.nodes) {
     const matchedOn = ["title", "code", "carrierIdentifier"].find(
-      (field) => line[field] && FAST_COURIER_PATTERN.test(line[field]),
+      (field) => line[field] && pattern.test(line[field]),
     );
     if (matchedOn) return { line, matchedOn };
   }
   return { line: null, matchedOn: null };
+}
+
+/* Which courier (if any) this order was shipped with */
+function detectCourier(order) {
+  for (const [courier, { pattern }] of Object.entries(COURIERS)) {
+    const { line, matchedOn } = findCourierLine(order, pattern);
+    if (line) return { courier, line, matchedOn };
+  }
+  return { courier: null, line: null, matchedOn: null };
+}
+
+/* Fast Courier shipping line code:
+     fast-courier:<orderId>:<quoteId>
+     e.g. fast-courier:QMXQXZXYWO:18582818
+   orderId = QMXQXZXYWO (used in the URL paths), quoteId = 18582818 */
+function parseFastCourierCode(code = "") {
+  const [prefix, fcOrderId, quoteId] = String(code)
+    .split(":")
+    .map((s) => s.trim());
+  if (!COURIERS.fastCourier.pattern.test(prefix ?? "") || !quoteId || !fcOrderId) {
+    return { quoteId: null, fcOrderId: null };
+  }
+  return { quoteId, fcOrderId };
+}
+
+/* Smart Send shipping line code:
+     smart-send-<priceId>
+     e.g. smart-send-689741  ->  PriceID 689741
+   Also accepts smart-send:689741 or smart_send_689741. */
+function parseSmartSendCode(code = "") {
+  const m = String(code)
+    .trim()
+    .match(/^smart[\s_-]*send[\s:_-]*(\d+)$/i);
+  return { priceId: m ? m[1] : null };
 }
 
 /* Next business day in Sydney time, as YYYY-MM-DD */
@@ -117,8 +154,8 @@ const nextBusinessDay = () => {
 };
 
 /* Same auth on every Fast Courier call. Sends both header styles because
-   the quote and booking calls previously used different ones. Once you
-   confirm which one the docs require, delete the other. */
+   the calls previously used different ones. Once you confirm which one
+   the docs require, delete the other. */
 const fastCourierHeaders = () => ({
   "Content-Type": "application/json",
   Accept: "application/json",
@@ -176,11 +213,13 @@ function buildPreview(order, collectionDate) {
     email: order.email || order.customer?.email || "",
   };
 
+  // Fast Courier: display only (the saved quote is used).
+  // Smart Send: sent in the BookJob request, so these must match the
+  // items the quote was originally obtained with.
   const items = order.lineItems.nodes.map((li) => ({
     id: li.id,
     title: li.title,
     type: e.FAST_COURIER_DEFAULT_TYPE ?? "roll",
-    // Must be one of the values from GET /package-contents-list
     contents: e.FAST_COURIER_DEFAULT_CONTENTS ?? "other",
     weight: Number(e.FAST_COURIER_DEFAULT_WEIGHT_KG ?? 1),
     length: Number(e.FAST_COURIER_DEFAULT_LENGTH_CM ?? 30),
@@ -189,7 +228,7 @@ function buildPreview(order, collectionDate) {
     quantity: li.currentQuantity ?? li.quantity,
   }));
 
-  // Not displayed, but still sent as valueOfContent in the booking.
+  // Not displayed, but still sent as valueOfContent in the Fast Courier booking.
   const declaredValue =
     Math.round(
       order.lineItems.nodes.reduce(
@@ -201,9 +240,16 @@ function buildPreview(order, collectionDate) {
       ) * 100,
     ) / 100;
 
-  // Prefer the line that matched Fast Courier; otherwise the first line
-  const { line: fcLine, matchedOn } = findFastCourierLine(order);
-  const shippingLine = fcLine ?? order.shippingLines.nodes[0] ?? null;
+  // Prefer the line that matched a courier; otherwise the first line
+  const { courier, line: courierLine, matchedOn } = detectCourier(order);
+  const shippingLine = courierLine ?? order.shippingLines.nodes[0] ?? null;
+
+  const ids =
+    courier === "fastCourier"
+      ? parseFastCourierCode(shippingLine?.code)
+      : courier === "smartSend"
+        ? parseSmartSendCode(shippingLine?.code)
+        : {};
 
   return {
     sender,
@@ -215,6 +261,8 @@ function buildPreview(order, collectionDate) {
       .join(", ")
       .slice(0, 250),
     carrier: {
+      courier, // "fastCourier" | "smartSend" | null
+      courierLabel: courier ? COURIERS[courier].label : "",
       shippingTitle: shippingLine?.title ?? "",
       shippingCode: shippingLine?.code ?? "",
       carrierIdentifier: shippingLine?.carrierIdentifier ?? "",
@@ -222,85 +270,36 @@ function buildPreview(order, collectionDate) {
       matchedOn,
       shippingOriginal: shippingLine?.originalPriceSet?.shopMoney ?? null,
       shippingCharged: shippingLine?.discountedPriceSet?.shopMoney ?? null,
+      // Ids read from the shipping line code (no quote is ever requested)
+      quoteId: null, // Fast Courier
+      fcOrderId: null, // Fast Courier
+      priceId: null, // Smart Send
+      ...ids,
       authorityToLeave: e.FAST_COURIER_AUTHORITY_TO_LEAVE === "true",
       collectionDate: collectionDate || nextBusinessDay(),
-      pickupTimeWindow: e.FAST_COURIER_PICKUP_TIME_WINDOW ?? "9am to 5pm",
+      pickupTimeWindow:
+        courier === "smartSend"
+          ? (e.SMARTSEND_PICKUP_TIME ?? "")
+          : (e.FAST_COURIER_PICKUP_TIME_WINDOW ?? "9am to 5pm"),
     },
     specialInstructions: order.note ?? "",
     docsEmail: e.FAST_COURIER_DOCS_EMAIL ?? sender.email,
   };
 }
 
-/**
- * STEP 1 - request a quote.
- * Returns the quoteId plus Fast Courier's own order id, which step 2 needs.
- * ASSUMPTION: response field names are a guess. Check the logged response.
- */
-async function requestQuote(preview) {
+/* ------------------------------------------------------------------ */
+/* Fast Courier                                                        */
+/* ------------------------------------------------------------------ */
+
+/* STEP 1 - save booking details: POST {BASE}{SAVE_BOOKING_PATH}/{fcOrderId}
+   (/api/save-order-details/{orderId}) */
+async function bookCourier(fcOrderId, quoteId, preview) {
   const e = process.env;
   requireEnv(
     "FAST_COURIER_BASE_URL",
-    "FAST_COURIER_QUOTES_PATH",
+    "FAST_COURIER_SAVE_BOOKING_PATH",
     "FAST_COURIER_SECRET_KEY",
   );
-
-  const res = await fetch(
-    `${e.FAST_COURIER_BASE_URL}${e.FAST_COURIER_QUOTES_PATH}`,
-    {
-      method: "POST",
-      headers: fastCourierHeaders(),
-      body: JSON.stringify({
-        pickupSuburb: preview.sender.suburb,
-        pickupState: preview.sender.state,
-        pickupPostcode: preview.sender.postcode,
-        pickupBuildingType: e.FAST_COURIER_PICKUP_BUILDING_TYPE,
-        destinationSuburb: preview.receiver.suburb,
-        destinationState: preview.receiver.state,
-        destinationPostcode: preview.receiver.postcode,
-        destinationBuildingType: e.FAST_COURIER_DESTINATION_BUILDING_TYPE,
-        isPickupTailLift: e.FAST_COURIER_PICKUP_TAIL_LIFT === "true",
-        isDropOffTailLift: e.FAST_COURIER_DROPOFF_TAIL_LIFT === "true",
-        isDropOffPOBox: e.FAST_COURIER_DROPOFF_PO_BOX === "true",
-        items: preview.items.map((i) => ({
-          type: i.type,
-          contents: i.contents,
-          length: i.length,
-          width: i.width,
-          height: i.height,
-          weight: i.weight,
-          quantity: i.quantity,
-        })),
-      }),
-    },
-  );
-
-  const body = await res.json().catch(() => null);
-  console.log("Fast Courier quote response:", JSON.stringify(body, null, 2));
-
-  if (!res.ok) {
-    throw new Error(`Quote: ${apiError(body, `failed (${res.status})`)}`);
-  }
-
-  const first = body?.data?.[0] ?? body?.quotes?.[0] ?? body;
-  const quoteId = first?.quoteId ?? first?.id;
-  const fcOrderId =
-    body?.orderId ??
-    body?.order_id ??
-    body?.data?.orderId ??
-    first?.orderId ??
-    first?.order_id ??
-    null;
-
-  if (!quoteId) {
-    throw new Error("Quote response had no quoteId (see server log for body)");
-  }
-  return { quoteId, fcOrderId };
-}
-
-/* STEP 2 - save booking details: POST {BASE}{SAVE_BOOKING_PATH}/{fcOrderId} */
-async function bookCourier(fcOrderId, quoteId, preview) {
-  const e = process.env;
-  requireEnv("FAST_COURIER_BASE_URL", "FAST_COURIER_SAVE_BOOKING_PATH");
   const extended = e.FAST_COURIER_EXTENDED_LIABILITY ?? "0";
 
   const payload = {
@@ -361,7 +360,8 @@ async function bookCourier(fcOrderId, quoteId, preview) {
   return body;
 }
 
-/* STEP 3 - confirm the booking: POST {BASE}{BOOKING_PATH}/{fcOrderId}
+/* STEP 2 - confirm the booking: POST {BASE}{BOOKING_PATH}/{fcOrderId}
+   (/api/order-booking/{orderId})
    ASSUMPTION: takes the order id in the path with no body. Check the docs. */
 async function confirmBooking(fcOrderId) {
   const e = process.env;
@@ -379,6 +379,182 @@ async function confirmBooking(fcOrderId) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Smart Send (SOAP)                                                   */
+/* ------------------------------------------------------------------ */
+const xmlEscape = (v) =>
+  String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+
+const xmlUnescape = (v) =>
+  String(v ?? "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+
+/* <Name>value</Name>, or nothing when the value is empty (optional fields) */
+const tag = (name, value) =>
+  value === undefined || value === null || value === ""
+    ? ""
+    : `<${name}>${xmlEscape(value)}</${name}>`;
+
+const xmlValue = (xml, name) =>
+  xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`))?.[1] ?? null;
+
+/* Smart Send phone numbers must be exactly 10 digits */
+function auPhone(raw, label) {
+  let d = String(raw ?? "").replace(/\D/g, "");
+  if (d.startsWith("61") && d.length === 11) d = `0${d.slice(2)}`;
+  if (d.length !== 10) {
+    throw new Error(
+      `Smart Send needs a 10-digit ${label} phone number (got "${raw || ""}").`,
+    );
+  }
+  return d;
+}
+
+const cut = (v, n) => String(v ?? "").slice(0, n);
+const fullName = (p) => cut([p.firstName, p.lastName].filter(Boolean).join(" "), 30);
+
+/* Books using the PriceID saved on the order. No quote is requested.
+   The BookJob "request" block must match the ObtainQuote request the
+   PriceID came from (postcodes, suburbs, states, items), so it is built
+   from the same sender / receiver / items shown on the page. */
+async function bookSmartSend(preview, orderName) {
+  const e = process.env;
+  requireEnv(
+    "SMARTSEND_COURIER_QUOTES_URL",
+    "SMARTSEND_VIP_USERNAME",
+    "SMARTSEND_VIP_PASSWORD",
+  );
+  const { sender, receiver, carrier } = preview;
+
+  if (!carrier.priceId) {
+    throw new Error(
+      `Couldn't read a Smart Send PriceID from the shipping code "${carrier.shippingCode}".`,
+    );
+  }
+  if (!carrier.pickupTimeWindow) {
+    throw new Error(
+      "Missing SMARTSEND_PICKUP_TIME (must be one of Smart Send's valid pickup time values).",
+    );
+  }
+
+  const pickupPhone = auPhone(sender.phone, "pickup");
+  const destPhone = auPhone(receiver.phone, "receiver");
+
+  // Smart Send has no quantity field, so repeat each item per unit
+  const itemsXml = preview.items
+    .flatMap((i) =>
+      Array.from({ length: Math.max(1, Number(i.quantity) || 1) }, () => i),
+    )
+    .map(
+      (i) =>
+        `<Item>${tag("Description", cut(i.title, 30))}` +
+        `${tag("Depth", Math.round(i.width))}` +
+        `${tag("Height", Math.round(i.height))}` +
+        `${tag("Length", Math.round(i.length))}` +
+        `${tag("Weight", i.weight)}</Item>`,
+    )
+    .join("");
+
+  const requestXml =
+    `<request>` +
+    tag("DeveloperId", e.SMARTSEND_DEVELOPER_ID) +
+    tag("ResellerId", e.SMARTSEND_RESELLER_ID) +
+    tag("TailLift", e.SMARTSEND_TAIL_LIFT ?? "None") +
+    tag("TransportAssurance", Number(e.SMARTSEND_TRANSPORT_ASSURANCE ?? 0)) +
+    tag("VIPUsername", e.SMARTSEND_VIP_USERNAME) +
+    tag("VIPPassword", e.SMARTSEND_VIP_PASSWORD) +
+    tag("PostcodeFrom", sender.postcode) +
+    tag("PostcodeTo", receiver.postcode) +
+    tag("SuburbFrom", sender.suburb) +
+    tag("SuburbTo", receiver.suburb) +
+    tag("StateFrom", sender.state) +
+    tag("StateTo", receiver.state) +
+    tag("UserType", e.SMARTSEND_USER_TYPE ?? "Business") +
+    tag("ReceiptedDelivery", e.SMARTSEND_RECEIPTED_DELIVERY === "true") +
+    `<Items>${itemsXml}</Items>` +
+    `</request>`;
+
+  const party = (p, phone) =>
+    tag("CompanyName", cut(p.company, 30)) +
+    tag("Name", fullName(p)) +
+    tag("Phone", phone);
+
+  const detailsXml =
+    `<details>` +
+    tag("PriceID", carrier.priceId) +
+    tag("MerchantInvoiceNumber", cut(orderName, 20)) +
+    `<ContactDetails>${party(sender, pickupPhone)}${tag("Email", sender.email)}</ContactDetails>` +
+    `<PickupDetails>${party(sender, pickupPhone)}` +
+    `${tag("StreetAddress1", cut(sender.address1, 30))}${tag("StreetAddress2", cut(sender.address2, 30))}</PickupDetails>` +
+    `<DestinationDetails>${party(receiver, destPhone)}` +
+    `${tag("StreetAddress1", cut(receiver.address1, 30))}${tag("StreetAddress2", cut(receiver.address2, 30))}</DestinationDetails>` +
+    tag("PickupDate", carrier.collectionDate) +
+    tag("PickupTime", carrier.pickupTimeWindow) +
+    tag("ReceiverEmailIn", receiver.email) +
+    `</details>`;
+
+  // The quote block is reduced to the PriceID we have saved
+  const quoteXml = `<quote>${tag("PriceID", carrier.priceId)}</quote>`;
+
+  const envelope =
+    `<?xml version="1.0" encoding="utf-8"?>` +
+    `<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">` +
+    `<soap:Body><BookJob xmlns="http://developer.smartsend.com.au/">` +
+    requestXml +
+    detailsXml +
+    quoteXml +
+    `</BookJob></soap:Body></soap:Envelope>`;
+
+  // POST to the service URL itself. "?op=BookJob" is only the help page.
+  console.log("Smart Send BookJob URL:", e.SMARTSEND_COURIER_QUOTES_URL);
+
+  const res = await fetch(e.SMARTSEND_COURIER_QUOTES_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      SOAPAction: '"http://developer.smartsend.com.au/BookJob"',
+    },
+    body: envelope,
+  });
+  const text = await res.text();
+  // Log the response only, never the request (it contains the password)
+  console.log("Smart Send BookJob response:", text.slice(0, 2000));
+
+  if (!res.ok) {
+    const fault = xmlValue(text, "faultstring");
+    throw new Error(
+      `Smart Send: HTTP ${res.status}${fault ? ` - ${xmlUnescape(fault)}` : ""}`,
+    );
+  }
+
+  const statusCode = xmlValue(text, "StatusCode");
+  const messages = [
+    ...(xmlValue(text, "StatusMessages") ?? "").matchAll(
+      /<string>([\s\S]*?)<\/string>/g,
+    ),
+  ].map((m) => xmlUnescape(m[1]));
+
+  if (statusCode !== "0") {
+    throw new Error(
+      `Smart Send: ${messages.join(" | ") || `failed (StatusCode ${statusCode ?? "unknown"})`}`,
+    );
+  }
+
+  return {
+    referenceNumber: xmlValue(text, "ReferenceID"),
+    messages,
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Loader / action                                                     */
 /* ------------------------------------------------------------------ */
 export const loader = async ({ request, params }) => {
@@ -393,9 +569,14 @@ export const loader = async ({ request, params }) => {
       };
     }
 
-    const isFastCourier = findFastCourierLine(order).line !== null;
+    const preview = buildPreview(order);
 
-    return { order, isFastCourier, preview: buildPreview(order), error: null };
+    return {
+      order,
+      isSupportedCourier: preview.carrier.courier !== null,
+      preview,
+      error: null,
+    };
   } catch (err) {
     if (isRedirect(err)) throw err;
     console.error("Loader failed:", err);
@@ -411,31 +592,35 @@ export const action = async ({ request, params }) => {
     const order = await fetchOrder(admin, params.orderId);
     if (!order) throw new Error("Order not found");
 
-    // Server-side guard: never book Fast Courier for other shipping methods
-    if (!findFastCourierLine(order).line) {
+    const preview = buildPreview(order, form.get("collectionDate"));
+    const { courier } = preview.carrier;
+
+    // Server-side guard: only book couriers this page supports
+    if (!courier) {
       const method = order.shippingLines.nodes[0]?.title ?? "unknown";
       throw new Error(
-        `This order's shipping method ("${method}") is not Fast Courier, so it can't be booked here.`,
+        `This order's shipping method ("${method}") is not Fast Courier or Smart Send, so it can't be booked here.`,
       );
     }
 
-    const preview = buildPreview(order, form.get("collectionDate"));
+    // Ids come ONLY from the order's saved shipping code. No quote is requested.
+    if (courier === "fastCourier") {
+      const { quoteId, fcOrderId } = preview.carrier;
+      if (!quoteId || !fcOrderId) {
+        throw new Error(
+          `Couldn't read a quote id and order id from the shipping code "${preview.carrier.shippingCode}". Expected fast-courier:<orderId>:<quoteId>.`,
+        );
+      }
 
-    let quoteId = form.get("quoteId");
-    let fcOrderId = form.get("fcOrderId");
-    if (!quoteId) {
-      ({ quoteId, fcOrderId } = await requestQuote(preview));
+      const saved = await bookCourier(fcOrderId, quoteId, preview);
+      const confirmed = await confirmBooking(fcOrderId);
+
+      return { ok: true, booking: confirmed ?? saved };
     }
 
-    if (!fcOrderId) {
-      throw new Error(
-        "Quote response had no Fast Courier order id (check the logged quote response)",
-      );
-    }
-    const saved = await bookCourier(fcOrderId, quoteId, preview);
-    const confirmed = await confirmBooking(fcOrderId);
-
-    return { ok: true, booking: confirmed ?? saved };
+    // courier === "smartSend"
+    const booking = await bookSmartSend(preview, order.name);
+    return { ok: true, booking };
   } catch (err) {
     if (isRedirect(err)) throw err;
     console.error("Action failed:", err);
@@ -529,11 +714,18 @@ export default function OrderFulfillmentConfirmation() {
     );
   }
 
-  const { order, isFastCourier, preview } = data;
+  const { order, isSupportedCourier, preview } = data;
   const { sender, receiver, carrier, items, contents } = preview;
+  const isFastCourier = carrier.courier === "fastCourier";
+  const isSmartSend = carrier.courier === "smartSend";
   const booked = fetcher.data?.ok === true;
   const failed = fetcher.data?.ok === false;
   const submitting = fetcher.state !== "idle";
+  const missingIds = isFastCourier
+    ? !carrier.quoteId || !carrier.fcOrderId
+    : isSmartSend
+      ? !carrier.priceId
+      : false;
   const booking = fetcher.data?.booking;
   const reference =
     booking?.referenceNumber ??
@@ -549,13 +741,20 @@ export default function OrderFulfillmentConfirmation() {
 
       {booked && (
         <s-banner tone="success">
-          Courier booked for {order.name}
+          Courier booked with {carrier.courierLabel} for {order.name}
           {reference ? ` · Reference ${reference}` : ""}.
         </s-banner>
       )}
       {failed && (
         <s-banner tone="critical" heading="Booking failed">
           {fetcher.data.error}
+        </s-banner>
+      )}
+      {isSupportedCourier && missingIds && (
+        <s-banner tone="warning" heading="Missing quote details">
+          {isFastCourier
+            ? `Couldn't read a quote id and order id from the shipping code "${carrier.shippingCode}". Expected fast-courier:<orderId>:<quoteId>.`
+            : `Couldn't read a Smart Send PriceID from the shipping code "${carrier.shippingCode}".`}
         </s-banner>
       )}
 
@@ -607,25 +806,40 @@ export default function OrderFulfillmentConfirmation() {
               );
             })}
 
-            {/* Booking details: only relevant when we will book Fast Courier */}
-            {isFastCourier && (
+            {/* Booking details: only relevant when we will book a courier */}
+            {isSupportedCourier && (
               <s-stack gap="small-500">
-                <s-heading>Fast Courier booking</s-heading>
+                <s-heading>{carrier.courierLabel} booking</s-heading>
                 {carrier.matchedOn && (
                   <Field
                     label="Detected via"
                     value={MATCH_LABELS[carrier.matchedOn]}
                   />
                 )}
-                <Field
-                  label="Authority to leave"
-                  value={carrier.authorityToLeave ? "Yes" : "No"}
-                />
+                {isFastCourier && (
+                  <>
+                    <Field label="Quote ID" value={carrier.quoteId || "—"} />
+                    <Field
+                      label="FC order ID"
+                      value={carrier.fcOrderId || "—"}
+                    />
+                    <Field
+                      label="Authority to leave"
+                      value={carrier.authorityToLeave ? "Yes" : "No"}
+                    />
+                  </>
+                )}
+                {isSmartSend && (
+                  <Field label="Price ID" value={carrier.priceId || "—"} />
+                )}
                 <Field
                   label="Collection date"
                   value={dmy(carrier.collectionDate)}
                 />
-                <Field label="Pickup time" value={carrier.pickupTimeWindow} />
+                <Field
+                  label="Pickup time"
+                  value={carrier.pickupTimeWindow || "—"}
+                />
                 <Field label="Contents" value={contents || "—"} />
                 {preview.specialInstructions && (
                   <Field
@@ -639,7 +853,7 @@ export default function OrderFulfillmentConfirmation() {
         </s-grid>
       </s-section>
 
-      {/* Items ----------------------------------------------------------- */}
+      {/* Items (Fast Courier: display only. Smart Send: sent in the booking) */}
       <s-section heading="Items" padding="none">
         <s-table>
           <s-table-header-row>
@@ -668,7 +882,7 @@ export default function OrderFulfillmentConfirmation() {
       </s-section>
 
       {/* Fulfil ---------------------------------------------------------- */}
-      {isFastCourier ? (
+      {isSupportedCourier ? (
         <s-section heading="Book courier">
           <s-stack
             direction="inline"
@@ -677,8 +891,9 @@ export default function OrderFulfillmentConfirmation() {
             gap="base"
           >
             <s-paragraph>
-              Check the sender, receiver and items above. Fulfilling the order
-              requests a quote and books the pickup.
+              Check the sender, receiver and shipping details above. Fulfilling
+              the order books the pickup with {carrier.courierLabel} using the
+              quote saved with this order.
             </s-paragraph>
             <fetcher.Form method="post">
               <input
@@ -690,9 +905,9 @@ export default function OrderFulfillmentConfirmation() {
                 variant="primary"
                 type="submit"
                 loading={submitting || undefined}
-                disabled={booked || undefined}
+                disabled={booked || missingIds || undefined}
               >
-                Fulfil the order
+                Fulfil by {carrier.courierLabel}
               </s-button>
             </fetcher.Form>
           </s-stack>
@@ -700,7 +915,7 @@ export default function OrderFulfillmentConfirmation() {
       ) : (
         <s-banner tone="info">
           This order uses "{carrier.shippingTitle || "no shipping method"}", not
-          Fast Courier, so booking is disabled.
+          Fast Courier or Smart Send, so booking is disabled.
         </s-banner>
       )}
     </s-page>
