@@ -605,6 +605,7 @@ async function bookSmartSend(preview, orderName) {
   // POST to the service URL itself. "?op=BookJob" is only the help page.
   console.log("Smart Send BookJob URL:", e.SMARTSEND_COURIER_QUOTES_URL);
   // Items only (no credentials), handy for matching against the quote
+  console.log("Smart Send envelope:", envelope);
   console.log("Smart Send items:", itemsXml);
 
   const res = await fetch(e.SMARTSEND_COURIER_QUOTES_URL, {
