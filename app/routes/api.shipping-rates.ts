@@ -651,7 +651,13 @@ async function getFastDeliveryRates(
   
   return selectedQuotes.map(({ entry, price, courierName, serviceName, eta }) => {
     const description = [courierName, serviceName, eta].filter(Boolean).join(" · ");
-    const quoteId = entry.quote_id ?? entry.id ?? `${courierName}-${serviceName}`;
+
+    // BUG FIX: Fast Courier's save-order-details endpoint needs the quote's
+    // alphanumeric string `id` (e.g. "EQZWYVALDO"), NOT the numeric
+    // `quote_id` (e.g. 18711508). Sending the numeric one fails with
+    // "The selected quote is invalid or does not exist." The old code
+    // preferred `quote_id` first; `id` now comes first.
+    const quoteId = entry.id ?? entry.quote_id ?? `${courierName}-${serviceName}`;
 
     return {
       service_name: "(FC)" + serviceName || courierName || "Fast courier shipping",
