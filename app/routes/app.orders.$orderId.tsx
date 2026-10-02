@@ -6,6 +6,7 @@ import {
   isRouteErrorResponse,
 } from "react-router";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -14,6 +15,15 @@ const COURIERS = {
   fastCourier: { label: "Fast Courier", pattern: /fast[\s_-]*courier/i },
   smartSend: { label: "Smart Send", pattern: /smart[\s_-]*send/i },
 };
+
+/* Smart Send's <Description> must be one of ITS package type names.
+   Map your VariantPackage.packageType values to theirs here when they
+   differ. Anything not listed is sent as-is.
+   Example: { "Tone Rug": "Carton" }  <- replace with real Smart Send types */
+const SMARTSEND_TYPES = {
+  // "Satchel": "Satchel/Bag",
+};
+const smartSendType = (t) => SMARTSEND_TYPES[t] ?? t;
 
 const ORDER_QUERY = `#graphql
   query GetOrder($id: ID!) {
@@ -95,6 +105,39 @@ async function fetchOrder(admin, orderId) {
     );
   }
   return json.data?.order ?? null;
+}
+
+/* VariantPackage.variantId is the bare numeric id, not the gid */
+const bareId = (gid) => String(gid ?? "").split("/").pop();
+
+/* Convert a package dimension to cm (unit defaults to CENTIMETERS) */
+function toCm(value, unit) {
+  const n = Number(value ?? 0);
+  const u = String(unit ?? "CENTIMETERS").toUpperCase();
+  const cm = u.startsWith("INCH")
+    ? n * 2.54
+    : u.startsWith("MILLI")
+      ? n / 10
+      : n;
+  return Math.round(cm * 100) / 100;
+}
+
+/* { [bareVariantId]: VariantPackage[] } for every variant on the order */
+async function fetchPackages(shop, order) {
+  const variantIds = [
+    ...new Set(
+      order.lineItems.nodes.map((li) => bareId(li.variant?.id)).filter(Boolean),
+    ),
+  ];
+  const rows = variantIds.length
+    ? await prisma.variantPackage.findMany({
+        where: { shop, variantId: { in: variantIds } },
+        orderBy: { updatedAt: "asc" },
+      })
+    : [];
+  const byVariant = {};
+  for (const r of rows) (byVariant[String(r.variantId)] ??= []).push(r);
+  return byVariant;
 }
 
 /* Finds the shipping line matching a courier, and which field matched,
@@ -196,7 +239,7 @@ const apiError = (body, fallback) => {
  * Everything the page shows AND everything the booking uses is built here,
  * so what the merchant sees is exactly what gets sent.
  */
-function buildPreview(order, collectionDate, pickupTime) {
+function buildPreview(order, packagesByVariant, collectionDate, pickupTime) {
   const e = process.env;
   const a = order.shippingAddress ?? {};
 
@@ -231,20 +274,34 @@ function buildPreview(order, collectionDate, pickupTime) {
     email: order.email || order.customer?.email || "",
   };
 
+  // Real packages from the VariantPackage table.
   // Fast Courier: display only (the saved quote is used).
   // Smart Send: sent in the BookJob request, so these must match the
   // items the quote was originally obtained with.
-  const items = order.lineItems.nodes.map((li) => ({
-    id: li.id,
-    title: li.title,
-    type: e.FAST_COURIER_DEFAULT_TYPE ?? "roll",
-    contents: e.FAST_COURIER_DEFAULT_CONTENTS ?? "other",
-    weight: Number(e.FAST_COURIER_DEFAULT_WEIGHT_KG ?? 1),
-    length: Number(e.FAST_COURIER_DEFAULT_LENGTH_CM ?? 30),
-    width: Number(e.FAST_COURIER_DEFAULT_WIDTH_CM ?? 20),
-    height: Number(e.FAST_COURIER_DEFAULT_HEIGHT_CM ?? 15),
-    quantity: li.currentQuantity ?? li.quantity,
-  }));
+  const missingPackages = [];
+  const items = order.lineItems.nodes
+    .filter((li) => (li.currentQuantity ?? li.quantity) > 0)
+    .flatMap((li) => {
+      const pkgs = packagesByVariant?.[bareId(li.variant?.id)] ?? [];
+      if (pkgs.length === 0) {
+        const vt =
+          li.variant?.title && li.variant.title !== "Default Title"
+            ? ` - ${li.variant.title}`
+            : "";
+        missingPackages.push(`${li.title}${vt}`);
+        return [];
+      }
+      return pkgs.map((p) => ({
+        id: `${li.id}-${p.id}`,
+        title: li.title,
+        type: p.packageType ?? "",
+        weight: Number(p.weightKg ?? 0),
+        length: toCm(p.length, p.unit),
+        width: toCm(p.width, p.unit),
+        height: toCm(p.height, p.unit),
+        quantity: li.currentQuantity ?? li.quantity,
+      }));
+    });
 
   // Not displayed, but still sent as valueOfContent in the Fast Courier booking.
   const declaredValue =
@@ -273,6 +330,7 @@ function buildPreview(order, collectionDate, pickupTime) {
     sender,
     receiver,
     items,
+    missingPackages,
     declaredValue,
     contents: order.lineItems.nodes
       .map((li) => li.title)
@@ -477,14 +535,16 @@ async function bookSmartSend(preview, orderName) {
   const pickupPhone = auPhone(sender.phone, "pickup");
   const destPhone = auPhone(receiver.phone, "receiver");
 
-  // Smart Send has no quantity field, so repeat each item per unit
+  // Smart Send has no quantity field, so repeat each item per unit.
+  // <Description> is the package TYPE (a Smart Send type name), not the
+  // product title.
   const itemsXml = preview.items
     .flatMap((i) =>
       Array.from({ length: Math.max(1, Number(i.quantity) || 1) }, () => i),
     )
     .map(
       (i) =>
-        `<Item>${tag("Description", cut(i.title, 30))}` +
+        `<Item>${tag("Description", cut(smartSendType(i.type), 30))}` +
         `${tag("Depth", Math.round(i.width))}` +
         `${tag("Height", Math.round(i.height))}` +
         `${tag("Length", Math.round(i.length))}` +
@@ -544,6 +604,8 @@ async function bookSmartSend(preview, orderName) {
 
   // POST to the service URL itself. "?op=BookJob" is only the help page.
   console.log("Smart Send BookJob URL:", e.SMARTSEND_COURIER_QUOTES_URL);
+  // Items only (no credentials), handy for matching against the quote
+  console.log("Smart Send items:", itemsXml);
 
   const res = await fetch(e.SMARTSEND_COURIER_QUOTES_URL, {
     method: "POST",
@@ -588,7 +650,7 @@ async function bookSmartSend(preview, orderName) {
 /* ------------------------------------------------------------------ */
 export const loader = async ({ request, params }) => {
   // Outside try/catch on purpose: auth throws redirects that must pass through
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
   try {
     const order = await fetchOrder(admin, params.orderId);
@@ -598,7 +660,8 @@ export const loader = async ({ request, params }) => {
       };
     }
 
-    const preview = buildPreview(order);
+    const packagesByVariant = await fetchPackages(session.shop, order);
+    const preview = buildPreview(order, packagesByVariant);
 
     return {
       order,
@@ -614,15 +677,17 @@ export const loader = async ({ request, params }) => {
 };
 
 export const action = async ({ request, params }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
   try {
     const form = await request.formData();
     const order = await fetchOrder(admin, params.orderId);
     if (!order) throw new Error("Order not found");
 
+    const packagesByVariant = await fetchPackages(session.shop, order);
     const preview = buildPreview(
       order,
+      packagesByVariant,
       String(form.get("collectionDate") ?? "").trim(),
       String(form.get("pickupTime") ?? "").trim(),
     );
@@ -633,6 +698,13 @@ export const action = async ({ request, params }) => {
       const method = order.shippingLines.nodes[0]?.title ?? "unknown";
       throw new Error(
         `This order's shipping method ("${method}") is not Fast Courier or Smart Send, so it can't be booked here.`,
+      );
+    }
+
+    // Server-side guard: every variant needs a saved package
+    if (preview.missingPackages.length) {
+      throw new Error(
+        `No package saved for: ${preview.missingPackages.join(", ")}. Add them on the variant packages page first.`,
       );
     }
 
@@ -757,9 +829,11 @@ export default function OrderFulfillmentConfirmation() {
   }
 
   const { order, isSupportedCourier, preview } = data;
-  const { sender, receiver, carrier, items, contents } = preview;
+  const { sender, receiver, carrier, items, contents, missingPackages } =
+    preview;
   const isFastCourier = carrier.courier === "fastCourier";
   const isSmartSend = carrier.courier === "smartSend";
+  const hasMissingPackages = missingPackages.length > 0;
   const booked = fetcher.data?.ok === true;
   const failed = fetcher.data?.ok === false;
   const submitting = fetcher.state !== "idle";
@@ -797,6 +871,12 @@ export default function OrderFulfillmentConfirmation() {
           {isFastCourier
             ? `Couldn't read a quote id and order id from the shipping code "${carrier.shippingCode}". Expected fast-courier:<orderId>:<quoteId>.`
             : `Couldn't read a Smart Send PriceID from the shipping code "${carrier.shippingCode}".`}
+        </s-banner>
+      )}
+      {isSupportedCourier && hasMissingPackages && (
+        <s-banner tone="warning" heading="Missing package details">
+          No package saved for: {missingPackages.join(", ")}. Add them on the
+          variant packages page before booking.
         </s-banner>
       )}
 
@@ -892,7 +972,7 @@ export default function OrderFulfillmentConfirmation() {
         </s-grid>
       </s-section>
 
-      {/* Items (Fast Courier: display only. Smart Send: sent in the booking) */}
+      {/* Items (from VariantPackage. Fast Courier: display only. Smart Send: sent in the booking) */}
       <s-section heading="Items" padding="none">
         <s-table>
           <s-table-header-row>
@@ -908,12 +988,25 @@ export default function OrderFulfillmentConfirmation() {
             {items.map((i) => (
               <s-table-row key={i.id}>
                 <s-table-cell>{i.title}</s-table-cell>
-                <s-table-cell>{humanize(i.type)}</s-table-cell>
+                <s-table-cell>{i.type || "—"}</s-table-cell>
                 <s-table-cell>{i.weight} kg</s-table-cell>
                 <s-table-cell>{i.length} cm</s-table-cell>
                 <s-table-cell>{i.width} cm</s-table-cell>
                 <s-table-cell>{i.height} cm</s-table-cell>
                 <s-table-cell>{i.quantity}</s-table-cell>
+              </s-table-row>
+            ))}
+            {missingPackages.map((title) => (
+              <s-table-row key={`missing-${title}`}>
+                <s-table-cell>{title}</s-table-cell>
+                <s-table-cell>
+                  <s-text tone="critical">No package saved</s-text>
+                </s-table-cell>
+                <s-table-cell>—</s-table-cell>
+                <s-table-cell>—</s-table-cell>
+                <s-table-cell>—</s-table-cell>
+                <s-table-cell>—</s-table-cell>
+                <s-table-cell>—</s-table-cell>
               </s-table-row>
             ))}
           </s-table-body>
@@ -972,7 +1065,12 @@ export default function OrderFulfillmentConfirmation() {
                 type="submit"
                 loading={submitting || undefined}
                 disabled={
-                  booked || missingIds || !collectionDate || !pickupTime || undefined
+                  booked ||
+                  missingIds ||
+                  hasMissingPackages ||
+                  !collectionDate ||
+                  !pickupTime ||
+                  undefined
                 }
               >
                 Fulfil by {carrier.courierLabel}
