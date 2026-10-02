@@ -16,6 +16,14 @@ const COURIERS = {
   smartSend: { label: "Smart Send", pattern: /smart[\s_-]*send/i },
 };
 
+/* Pickup time formats each courier accepts. Smart Send validates against
+   its own fixed list of strings (not published), and "between 9am - 5pm"
+   is a confirmed valid value. Fast Courier takes "9am - 5pm". */
+const PICKUP_TIME_DEFAULTS = {
+  smartSend: "between 9am - 5pm",
+  fastCourier: "9am - 5pm",
+};
+
 /* Smart Send's <Description> must be one of ITS package type names.
    Map your VariantPackage.packageType values to theirs here when they
    differ. Anything not listed is sent as-is.
@@ -353,12 +361,14 @@ function buildPreview(order, packagesByVariant, collectionDate, pickupTime) {
       ...ids,
       authorityToLeave: e.FAST_COURIER_AUTHORITY_TO_LEAVE === "true",
       collectionDate: collectionDate || nextBusinessDay(),
-      // Editable on the page: the submitted value wins, env is the default
+      // Editable on the page: the submitted value wins, env is the default,
+      // then the courier's built-in default format.
       pickupTimeWindow:
         pickupTime ||
         (courier === "smartSend"
-          ? (e.SMARTSEND_PICKUP_TIME ?? "9am to 5pm")
-          : (e.FAST_COURIER_PICKUP_TIME_WINDOW ?? "9am to 5pm")),
+          ? (e.SMARTSEND_PICKUP_TIME ?? PICKUP_TIME_DEFAULTS.smartSend)
+          : (e.FAST_COURIER_PICKUP_TIME_WINDOW ??
+            PICKUP_TIME_DEFAULTS.fastCourier)),
       // Optional comma-separated lists. When set, the page shows a dropdown.
       pickupTimeOptions: (
         (courier === "smartSend"
@@ -368,6 +378,11 @@ function buildPreview(order, packagesByVariant, collectionDate, pickupTime) {
         .split(",")
         .map((x) => x.trim())
         .filter(Boolean),
+      // Shown as the placeholder / hint on the free-text field
+      pickupTimeExample:
+        courier === "smartSend"
+          ? PICKUP_TIME_DEFAULTS.smartSend
+          : PICKUP_TIME_DEFAULTS.fastCourier,
     },
     specialInstructions: order.note ?? "",
     docsEmail: e.FAST_COURIER_DOCS_EMAIL ?? sender.email,
@@ -389,8 +404,12 @@ async function bookCourier(fcOrderId, quoteId, preview) {
   );
   const extended = e.FAST_COURIER_EXTENDED_LIABILITY ?? "0";
 
+  // The code from the shipping line gives quoteId as a string. Send a
+  // number when it is purely numeric, in case the API validates the type.
+  const quoteIdValue = /^\d+$/.test(String(quoteId)) ? Number(quoteId) : quoteId;
+
   const payload = {
-    quoteId,
+    quoteId: quoteIdValue,
     senderType: "sender",
 
     pickupFirstName: preview.sender.firstName,
@@ -433,6 +452,14 @@ async function bookCourier(fcOrderId, quoteId, preview) {
 
   const url = `${e.FAST_COURIER_BASE_URL}${e.FAST_COURIER_SAVE_BOOKING_PATH}/${fcOrderId}`;
   console.log("Fast Courier save-order-details URL:", url);
+  // Ids only (no secrets): compare these against the quote that was made
+  console.log("Fast Courier ids:", {
+    fcOrderId,
+    quoteId: payload.quoteId,
+    quoteIdType: typeof payload.quoteId,
+    collectionDate: payload.collectionDate,
+    pickupTimeWindow: payload.pickupTimeWindow,
+  });
 
   const res = await fetch(url, {
     method: "POST",
@@ -528,7 +555,7 @@ async function bookSmartSend(preview, orderName) {
   }
   if (!carrier.pickupTimeWindow) {
     throw new Error(
-      "Choose a pickup time (must be one of Smart Send's valid pickup time values).",
+      `Choose a pickup time (must be one of Smart Send's valid values, e.g. "${PICKUP_TIME_DEFAULTS.smartSend}").`,
     );
   }
 
@@ -604,8 +631,9 @@ async function bookSmartSend(preview, orderName) {
 
   // POST to the service URL itself. "?op=BookJob" is only the help page.
   console.log("Smart Send BookJob URL:", e.SMARTSEND_COURIER_QUOTES_URL);
-  // Items only (no credentials), handy for matching against the quote
-  console.log("Smart Send envelope:", envelope);
+  // Never log the full envelope: it contains the VIP username and password.
+  // details + items hold everything useful for debugging and no credentials.
+  console.log("Smart Send details:", detailsXml);
   console.log("Smart Send items:", itemsXml);
 
   const res = await fetch(e.SMARTSEND_COURIER_QUOTES_URL, {
@@ -617,7 +645,6 @@ async function bookSmartSend(preview, orderName) {
     body: envelope,
   });
   const text = await res.text();
-  // Log the response only, never the request (it contains the password)
   console.log("Smart Send BookJob response:", text.slice(0, 2000));
 
   if (!res.ok) {
@@ -1050,8 +1077,8 @@ export default function OrderFulfillmentConfirmation() {
               ) : (
                 <s-text-field
                   label="Pickup time"
-                  placeholder="9am to 5pm"
-                  details="Example: 9am to 5pm"
+                  placeholder={carrier.pickupTimeExample}
+                  details={`Example: ${carrier.pickupTimeExample}`}
                   value={pickupTime}
                   onChange={(e) => setPickupTime(e.currentTarget.value)}
                 />
