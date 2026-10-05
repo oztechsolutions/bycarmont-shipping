@@ -1074,7 +1074,10 @@ export async function action({ request }: ActionFunctionArgs) {
     log.totalWeightGrams = totalWeightGrams;
     log.totalWeightKg = totalWeightGrams / 1000;
 
-    const useFastCourier = totalWeightGrams < FAST_DELIVERY_WEIGHT_LIMIT_GRAMS;
+    //const useFastCourier = totalWeightGrams < FAST_DELIVERY_WEIGHT_LIMIT_GRAMS;
+    // Weight rule applies to domestic (AU) only; international always uses Fast Courier
+    const isDomestic = toUpper(destination.country) === "AU";
+    const useFastCourier = !isDomestic || totalWeightGrams < FAST_DELIVERY_WEIGHT_LIMIT_GRAMS;
 
     let rates: ShippingRate[];
 
