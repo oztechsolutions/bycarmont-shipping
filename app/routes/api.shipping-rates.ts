@@ -1068,41 +1068,51 @@ export async function action({ request }: ActionFunctionArgs) {
     log.itemCount = rateRequest.items?.length ?? 0;
 
     const totalWeightGrams = (rateRequest.items ?? []).reduce(
-      (total, item) => total + (item.grams ?? 0) * (item.quantity ?? 1),
-      0,
-    );
-    log.totalWeightGrams = totalWeightGrams;
-    log.totalWeightKg = totalWeightGrams / 1000;
+  (total, item) => total + (item.grams ?? 0) * (item.quantity ?? 1),
+  0,
+);
+log.totalWeightGrams = totalWeightGrams;
+log.totalWeightKg = totalWeightGrams / 1000;
 
-    //const useFastCourier = totalWeightGrams < FAST_DELIVERY_WEIGHT_LIMIT_GRAMS;
-    // Weight rule applies to domestic (AU) only; international always uses Fast Courier
-    const isDomestic = toUpper(destination.country) === "AU";
-    const useFastCourier = !isDomestic || totalWeightGrams < FAST_DELIVERY_WEIGHT_LIMIT_GRAMS;
+  // International: don't quote at all. Returning an empty list makes Shopify
+  // fall back to the shipping rates configured in its own settings.
+  const isDomestic = toUpper(destination.country) === "AU";
+  if (!isDomestic) {
+    log.provider = "none";
+    log.status = "empty";
+    log.errorMessage = "International quoting disabled; deferring to Shopify default shipping";
+    log.returnedRatesJson = "[]";
+    log.returnedRateCount = 0;
+    log.durationMs = Date.now() - startedAt;
+    await saveRateLog(log);
+    return Response.json({ rates: [] });
+  }
 
-    let rates: ShippingRate[];
+  // Domestic only: weight rule picks the provider.
+  const useFastCourier = totalWeightGrams < FAST_DELIVERY_WEIGHT_LIMIT_GRAMS;
 
-    try {
-      if (useFastCourier) {
-        rates = await getFastDeliveryRates(currency, rateRequest, log);
-      } else if (!log.shop) {
-        // We need the shop to look up saved VariantPackage rows for Smart
-        // Send's dimensions/weight.
-        log.status = "error";
-        log.errorMessage =
-          "Missing x-shopify-shop-domain header; cannot look up saved package dimensions for Smart Send";
-        rates = [];
-      } else {
-        rates = await getSmartSendShippingRate(currency, rateRequest, log, log.shop);
-      }
-    } catch (error) {
-      console.error("Carrier API failed:", error);
+  let rates: ShippingRate[];
+
+  try {
+    if (useFastCourier) {
+      rates = await getFastDeliveryRates(currency, rateRequest, log);
+    } else if (!log.shop) {
       log.status = "error";
-      log.errorMessage = error instanceof Error ? error.message : String(error);
+      log.errorMessage =
+        "Missing x-shopify-shop-domain header; cannot look up saved package dimensions for Smart Send";
       rates = [];
+    } else {
+      rates = await getSmartSendShippingRate(currency, rateRequest, log, log.shop);
     }
+  } catch (error) {
+    console.error("Carrier API failed:", error);
+    log.status = "error";
+    log.errorMessage = error instanceof Error ? error.message : String(error);
+    rates = [];
+  }
 
-    const finalRates =
-      rates.length > 0 ? rates : getManualFallbackRates(totalWeightGrams, currency);
+  // Domestic only now, so the manual fallback applies whenever providers return nothing.
+  const finalRates = rates.length > 0 ? rates : getManualFallbackRates(totalWeightGrams, currency);
 
     log.returnedRatesJson = safeJson(finalRates);
     log.returnedRateCount = finalRates.length;
